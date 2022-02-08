@@ -9,13 +9,14 @@ from gym_env.env import Action
 
 import tensorflow as tf
 import json
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 
-from rl.policy import BoltzmannQPolicy
+from rl.policy import GreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.agents import DQNAgent
 from rl.core import Processor
@@ -26,12 +27,21 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 50  # before training starts, should be higher than start steps
-nb_steps = 100000
+nb_steps = 1000
 memory_limit = int(nb_steps / 2)
 batch_size = 500  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)
+
+def plot_bbg(milli_big_blinds):
+
+        plt.xlabel('Episode')
+        plt.ylabel('bb/g')
+        plt.title('Big Blinds Won Per Game')
+        x_pos = [i for i, _ in enumerate(milli_big_blinds)]
+        plt.plot(x_pos, milli_big_blinds, color='b')
+        plt.show()
 
 
 class Player:
@@ -62,11 +72,11 @@ class Player:
         nb_actions = self.env.action_space.n
 
         self.model = Sequential()
-        self.model.add(Dense(512, activation='relu', input_shape=env.observation_space))
+        self.model.add(Dense(128, activation='relu', input_shape=env.observation_space))
         self.model.add(Dropout(0.2))
-        self.model.add(Dense(512, activation='relu'))
+        self.model.add(Dense(128, activation='relu'))
         self.model.add(Dropout(0.2))
-        self.model.add(Dense(512, activation='relu'))
+        self.model.add(Dense(128, activation='relu'))
         self.model.add(Dropout(0.2))
         self.model.add(Dense(nb_actions, activation='linear'))
 
@@ -94,12 +104,15 @@ class Player:
         """Train a model"""
         # initiate training loop
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
-        tensorboard = TensorBoard(log_dir='./Graph/{}'.format(timestr), histogram_freq=0, write_graph=True,
+        
+        """
+        tensorboard = TensorBoard(log_dir='./Graph/train-fit/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
-
+        """
         self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
-                     start_step_policy=self.start_step_policy, callbacks=[tensorboard])
+                     start_step_policy=self.start_step_policy)
 
+        
         # Save the architecture
         dqn_json = self.model.to_json()
         with open("dqn_{}_json.json".format(env_name), "w") as json_file:
@@ -108,9 +121,18 @@ class Player:
         # After training is done, we save the final weights.
         self.dqn.save_weights('dqn_{}_weights.h5'.format(env_name), overwrite=True)
 
-        # Finally, evaluate our algorithm for 5 episodes.
-        self.dqn.test(self.env, nb_episodes=5, visualize=False)
-
+        """
+        tensorboard = TensorBoard(log_dir='./Graph/train-test/{}'.format(timestr), histogram_freq=0, write_graph=True,
+                                  write_images=False)
+        """
+        # Finally, evaluate our algorithm for 10 episodes.
+        #self.dqn.test(self.env, nb_episodes=10, visualize=False)
+        
+        bbg = self.env.bbg_data
+        if(len(bbg)==0):
+            print('Error: bbg data has length 0!')
+        else:
+            plot_bbg(bbg)
     def load(self, env_name):
         """Load a model"""
 
@@ -158,14 +180,15 @@ class Player:
         _ = info
 
         this_player_action_space = {Action.FOLD, Action.CHECK, Action.CALL, Action.RAISE_POT, Action.RAISE_HALF_POT,
-                                    Action.RAISE_2POT}
+                                    Action.RAISE_2POT, Action.ALL_IN}
         _ = this_player_action_space.intersection(set(action_space))
 
         action = None
         return action
 
-
-class TrumpPolicy(BoltzmannQPolicy):
+# replaced old policy
+# see https://github.com/dickreuter/neuron_poker/blob/master/agents/agent_keras_rl_dqn.py#L168 for old policy
+class TrumpPolicy(GreedyQPolicy):
     """Custom policy when making decision based on neural network."""
 
     def select_action(self, q_values):
@@ -178,16 +201,11 @@ class TrumpPolicy(BoltzmannQPolicy):
             Selection action
         """
         assert q_values.ndim == 1
-        q_values = q_values.astype('float64')
-        nb_actions = q_values.shape[0]
-
-        exp_values = np.exp(np.clip(q_values / self.tau, self.clip[0], self.clip[1]))
-        probs = exp_values / np.sum(exp_values)
-        action = np.random.choice(range(nb_actions), p=probs)
-        log.info(f"Chosen action by keras-rl {action} - probabilities: {probs}")
+        action = np.argmax(q_values)
+        log.info(f"Chosen action by keras-rl {action} - q values: {q_values}")
         return action
 
-
+   
 class CustomProcessor(Processor):
     """The agent and the environment"""
 
@@ -219,5 +237,4 @@ class CustomProcessor(Processor):
                     if action in self.legal_moves_limit:
                         break
                     action += i
-
         return action
