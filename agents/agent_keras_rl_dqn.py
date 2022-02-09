@@ -27,22 +27,30 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 50  # before training starts, should be higher than start steps
-nb_steps = 1000
+nb_steps = 10000
 memory_limit = int(nb_steps / 2)
 batch_size = 500  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)
 
-def plot_bbg(milli_big_blinds):
+def plot_bbg(big_blinds_data):
 
         plt.xlabel('Episode')
         plt.ylabel('bb/g')
         plt.title('Big Blinds Won Per Game')
-        x_pos = [i for i, _ in enumerate(milli_big_blinds)]
-        plt.plot(x_pos, milli_big_blinds, color='b')
+        x_pos = [i for i, _ in enumerate(big_blinds_data)]
+        plt.plot(x_pos, big_blinds_data, color='b')
         plt.show()
 
+def win_rate(number_of_hands, big_blinds_data):
+    """ returns the game win rate in bb/100 """
+    # winrate in bb/100 = (Profit in bb  / Number of hands) * 100
+    profit_in_bb = sum(big_blinds_data)
+    win_rate = (profit_in_bb / number_of_hands)
+    print('hands = %s'%number_of_hands)
+    print('profit in bb = %s'%profit_in_bb)
+    return win_rate
 
 class Player:
     """Mandatory class with the player methods"""
@@ -72,11 +80,11 @@ class Player:
         nb_actions = self.env.action_space.n
 
         self.model = Sequential()
-        self.model.add(Dense(128, activation='relu', input_shape=env.observation_space))
+        self.model.add(Dense(256, activation='relu', input_shape=env.observation_space))
         self.model.add(Dropout(0.2))
-        self.model.add(Dense(128, activation='relu'))
+        self.model.add(Dense(256, activation='relu'))
         self.model.add(Dropout(0.2))
-        self.model.add(Dense(128, activation='relu'))
+        self.model.add(Dense(256, activation='relu'))
         self.model.add(Dropout(0.2))
         self.model.add(Dense(nb_actions, activation='linear'))
 
@@ -109,30 +117,39 @@ class Player:
         tensorboard = TensorBoard(log_dir='./Graph/train-fit/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
         """
+
         self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
                      start_step_policy=self.start_step_policy)
 
-        
+        """
         # Save the architecture
+        
         dqn_json = self.model.to_json()
         with open("dqn_{}_json.json".format(env_name), "w") as json_file:
             json.dump(dqn_json, json_file)
 
+
         # After training is done, we save the final weights.
         self.dqn.save_weights('dqn_{}_weights.h5'.format(env_name), overwrite=True)
 
-        """
+        
         tensorboard = TensorBoard(log_dir='./Graph/train-test/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
-        """
-        # Finally, evaluate our algorithm for 10 episodes.
-        #self.dqn.test(self.env, nb_episodes=10, visualize=False)
         
+        # Finally, evaluate our algorithm for 10 episodes.
+        self.dqn.test(self.env, nb_episodes=10, visualize=False, callbacks=[tensorboard])
+        """
         bbg = self.env.bbg_data
-        if(len(bbg)==0):
-            print('Error: bbg data has length 0!')
+        games = self.env.games
+        hands = self.env.hands
+        if(games == 0):
+            print('Error: no games were completed!')
         else:
             plot_bbg(bbg)
+            wr = win_rate(hands, bbg)
+            print('Win rate (bb/100) = %s'%wr)
+        
+
     def load(self, env_name):
         """Load a model"""
 

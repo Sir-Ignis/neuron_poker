@@ -164,6 +164,7 @@ class HoldemTable(Env):
 
     def reset(self):
         """Reset after game over."""
+        self.games += 1
         self.observation = None
         self.reward = None
         self.info = None
@@ -223,9 +224,10 @@ class HoldemTable(Env):
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
-                reward = self._calculate_reward(action)
+                reward = self._calculate_reward(Action(action))
                 self.prev_stack_size = self.players[self.current_player.seat].stack
                 self._execute_step(Action(action))
+                #print('Max win player %s = %s'%(self.current_player.seat,self.player_max_win[self.current_player.seat]))
                 self.reward = reward
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
@@ -303,37 +305,39 @@ class HoldemTable(Env):
             self.render()
 
     def _calculate_reward(self, action):
-        """Reward function for agent
-           TODO: fix the reward function so that it correctly calculates reward,
-                 currently the expected value uses the wrong values since these are
-                 the values after the action has been executed but we want the values before.
-                 also a negative value should be given for the reward if the player loses when they didn't fold"""
+        """Reward function for agent"""
+        reward = 0
         if not(action == Action.FOLD):
             # reward = expected value weighted against number of table cards
             # contribution = amount keras-rl contributed to the pot
             contribution = self._contribution(action)
 
-            print("equity = %f"%self.player_data.equity_to_river_alive)
-            win_amount = self.player_data.equity_to_river_alive * (self.community_pot + self.current_round_pot)
-            print("win %s"%win_amount)
-            loss_amount = (1 - self.player_data.equity_to_river_alive) * contribution
-            print("loss %s"%loss_amount)
+            #print("equity = %f"%self.player_data.equity_to_river_alive)
+            total_winnings = sum(np.minimum(self.player_max_win[1], self.player_max_win)) + contribution
+            #print('max win = %s'%total_winnings)
+            win_amount = self.player_data.equity_to_river_alive * total_winnings
+            #print("win %s"%win_amount)
+            loss_amount = (1 - self.player_data.equity_to_river_alive) * (contribution+self.player_pots[self.current_player.seat])
+            #print("loss %s"%loss_amount)
             expected_value = win_amount - loss_amount 
-            print("expected value = %s"%(expected_value))
-            self.reward = expected_value #* ((len(self.table_cards)+1)/5)
-            print("reward = %s"%self.reward)
+            #print("expected value = %s"%(expected_value))
+            reward = expected_value 
+            #print("reward = %s"%reward)
         elif action == Action.FOLD:
-            self.reward = -self.player_pots[self.current_player.seat]
-            print("reward = %s"%self.reward)
+            reward = -self.player_pots[self.current_player.seat]
+            #print("reward = %s"%reward)
         else:
             pass
-        return self.reward
+        return reward
 
     def _contribution(self, action):
         """returns the contribution amount for a given action"""
         contribution = 0
-        if action == Action.RAISE_3BB:
-            contribution = 3 * self.big_blind - self.player_pots[self.current_player.seat]
+        if action == Action.CALL:
+            contribution = min(self.min_call - self.player_pots[self.current_player.seat],
+                                   self.current_player.stack)
+        elif action == Action.RAISE_3BB:
+            contribution = (3 * self.big_blind) - self.player_pots[self.current_player.seat]
 
         elif action == Action.RAISE_HALF_POT:
             contribution = (self.community_pot + self.current_round_pot) / 2
@@ -423,7 +427,6 @@ class HoldemTable(Env):
             self.current_player.temp_stack.append(self.current_player.stack)
 
             self.player_max_win[self.current_player.seat] += contribution  # side pot
-
             pos = self.player_cycle.idx
             rnd = self.stage.value + self.second_round
             self.stage_data[rnd].calls[pos] = action == Action.CALL
@@ -441,16 +444,12 @@ class HoldemTable(Env):
             f"player pot: {self.player_pots[self.current_player.seat]}")
 
     def _calculate_bbg(self):
-        """ returns the bb/g how many big blinds were won on average per game """
+        """ returns the bb/g how many big blinds were won in a game"""
         nbb_won = 0
-        mbb_g = 0
         won = self.players[1].stack - self.initial_stacks
         if not(won == 0):
             nbb_won = won / self.big_blind
-        if not(nbb_won == 0):
-            mbb_g = nbb_won / self.games
-        return mbb_g
-
+        return nbb_won
 
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
@@ -516,7 +515,6 @@ class HoldemTable(Env):
         log.info("Game over.")
         self.bbg_data.append(self._calculate_bbg())
         self.done = True
-        self.games = 0
         player_names = [f"{i} - {player.name}" for i, player in enumerate(self.players)]
         self.funds_history.columns = player_names
         if self.funds_plot:
@@ -607,7 +605,6 @@ class HoldemTable(Env):
         self.winner_ix = self._get_winner()
         self._award_winner(self.winner_ix)
         self.hands += 1
-        self.games += 1
 
     def _get_winner(self):
         """Determine which player has won the hand"""
@@ -632,6 +629,7 @@ class HoldemTable(Env):
         """Hand the pot to the winner and handle side pots"""
         max_win_per_player_for_winner = self.player_max_win[winner_ix]
         total_winnings = sum(np.minimum(max_win_per_player_for_winner, self.player_max_win))
+        log.info('Total winnings = %s'%total_winnings)
         remains = np.maximum(0, np.array(self.player_max_win) - max_win_per_player_for_winner)  # to be returned
 
         self.players[winner_ix].stack += total_winnings
