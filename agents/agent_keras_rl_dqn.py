@@ -10,6 +10,7 @@ from gym_env.env import Action
 import tensorflow as tf
 import json
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.callbacks import TensorBoard
@@ -20,28 +21,87 @@ from rl.policy import GreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.agents import DQNAgent
 from rl.core import Processor
-
+from rl.callbacks import ModelIntervalCheckpoint, FileLogger
 autoplay = True  # play automatically if played against keras-rl
 
 window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 50  # before training starts, should be higher than start steps
-nb_steps = 10000
+nb_steps = 1000
 memory_limit = int(nb_steps / 2)
 batch_size = 500  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)
 
-def plot_bbg(big_blinds_data):
+class ModelCheckpoint(ModelIntervalCheckpoint):
+    def __init__(self, filepath, interval, verbose=0):
+        super(ModelIntervalCheckpoint, self).__init__()
+        self.filepath = filepath
+        self.interval = interval
+        self.verbose = verbose
+        self.total_steps = 0
 
-        plt.xlabel('Episode')
-        plt.ylabel('bb/g')
-        plt.title('Big Blinds Won Per Game')
-        x_pos = [i for i, _ in enumerate(big_blinds_data)]
-        plt.plot(x_pos, big_blinds_data, color='b')
-        plt.show()
+    def on_step_end(self, step, logs={}):
+        """ Save weights at interval steps during training"""
+        self.total_steps += 1
+        if self.total_steps % self.interval != 0:
+            # Nothing to do.
+            return
+
+        filepath = self.filepath
+        if self.verbose > 0:
+            log.info('Step {}: saving model weights to {}'.format(
+                self.total_steps, filepath))
+        self.model.model.save_weights(self.filepath)
+
+
+def plot_metrics(metrics_file_path):
+    d = pd.read_json(metrics_file_path)
+    print(d)
+    l = pd.DataFrame(d['loss'])
+    a = pd.DataFrame(d['accuracy'])
+    """
+    print(df)
+    df = pd.DataFrame(d['mae'])
+    print(df)
+    df = pd.DataFrame(d['accuracy'])
+    print(df)
+    """
+    l.dropna()
+    a.dropna()
+    fig, (m1, m2) = plt.subplots(nrows=1, ncols=2)
+    m1.set_title('Loss per episode')
+    m1.set_xlabel('Episode')
+    m1.set_ylabel('Loss')
+    m2.set_title('Accuracy per episode')
+    m2.set_xlabel('Episode')
+    m2.set_ylabel('Accuracy')
+    m1.plot(l, label='loss')
+    m2.plot(a, label='accuracy')
+    plt.show()
+
+def plot_bbg(big_blinds_data):
+    plt.xlabel('Episode')
+    plt.ylabel('bb/g')
+    plt.title('Big Blinds Won Per Game')
+    x_pos = [i for i, _ in enumerate(big_blinds_data)]
+    plt.plot(x_pos, big_blinds_data, color='b')
+    plt.show()
+
+def plot_cumulative_bb(big_blinds_data):
+    plt.xlabel('Episode')
+    plt.ylabel('Cumulative BB won')
+    plt.title('Cumulative Big Blinds Won')
+    x_pos = [i for i, _ in enumerate(big_blinds_data)]
+    y_pos = []
+    for i in range(len(x_pos)):
+        y_pos.append(sum(big_blinds_data[:i+1]))
+    print("x: %s, y: %s"%(len(x_pos),len(y_pos)))
+    plt.plot(x_pos, y_pos, color='b')
+    plt.show()
+
 
 def win_rate(number_of_hands, big_blinds_data):
     """ returns the game win rate in bb/100 """
@@ -99,7 +159,7 @@ class Player:
                             target_model_update=1e-2, policy=policy,
                             processor=CustomProcessor(),
                             batch_size=batch_size, train_interval=train_interval, enable_double_dqn=enable_double_dqn)
-        self.dqn.compile(Adam(lr=1e-3), metrics=['mae'])
+        self.dqn.compile(optimizer=Adam(lr=1e-3), metrics=['mae','accuracy'])
 
     def start_step_policy(self, observation):
         """Custom policy for random decisions for warm up."""
@@ -109,21 +169,31 @@ class Player:
         return action
 
     def train(self, env_name):
-        """Train a model"""
+        """Train a model
+            TODO: find out why metrics are being logged as NaN
+        """
         # initiate training loop
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
         
+        log_dir = "./tmp/metrics_{}".format(timestr)
+        metrics = FileLogger(log_dir)
+
         """
         tensorboard = TensorBoard(log_dir='./Graph/train-fit/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
-        """
-
-        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
-                     start_step_policy=self.start_step_policy)
-
-        """
-        # Save the architecture
         
+        interval_checkpoints = ModelCheckpoint(filepath='./Checkpoints/{}/ckpt'.format(timestr),interval=500)
+        
+
+        tensorboard = TensorBoard(log_dir=log_dir+timestr, histogram_freq=0, write_graph=True,
+                                  write_images=False)
+        """
+        
+        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
+                     start_step_policy=self.start_step_policy, callbacks=[metrics])
+        
+        # Save the architecture
+        """
         dqn_json = self.model.to_json()
         with open("dqn_{}_json.json".format(env_name), "w") as json_file:
             json.dump(dqn_json, json_file)
@@ -139,13 +209,15 @@ class Player:
         # Finally, evaluate our algorithm for 10 episodes.
         self.dqn.test(self.env, nb_episodes=10, visualize=False, callbacks=[tensorboard])
         """
+        
         bbg = self.env.bbg_data
         games = self.env.games
         hands = self.env.hands
         if(games == 0):
             print('Error: no games were completed!')
         else:
-            plot_bbg(bbg)
+            plot_metrics(log_dir)
+            plot_cumulative_bb(bbg)
             wr = win_rate(hands, bbg)
             print('Win rate (bb/100) = %s'%wr)
         
