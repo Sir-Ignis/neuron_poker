@@ -14,7 +14,7 @@ import pandas as pd
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
 
 from rl.policy import GreedyQPolicy
@@ -27,10 +27,10 @@ autoplay = True  # play automatically if played against keras-rl
 window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
-nb_steps_warmup = 50  # before training starts, should be higher than start steps
-nb_steps = 1000
+nb_steps_warmup = 500  # before training starts, should be higher than start steps
+nb_steps = 100000
 memory_limit = int(nb_steps / 2)
-batch_size = 500  # items sampled from memory to train
+batch_size = 512  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)
@@ -59,16 +59,8 @@ class ModelCheckpoint(ModelIntervalCheckpoint):
 
 def plot_metrics(metrics_file_path):
     d = pd.read_json(metrics_file_path)
-    print(d)
     l = pd.DataFrame(d['loss'])
     a = pd.DataFrame(d['accuracy'])
-    """
-    print(df)
-    df = pd.DataFrame(d['mae'])
-    print(df)
-    df = pd.DataFrame(d['accuracy'])
-    print(df)
-    """
     l.dropna()
     a.dropna()
     fig, (m1, m2) = plt.subplots(nrows=1, ncols=2)
@@ -142,11 +134,14 @@ class Player:
         self.model = Sequential()
         self.model.add(Dense(256, activation='relu', input_shape=env.observation_space))
         self.model.add(Dropout(0.2))
+        self.model.add(BatchNormalization())
         self.model.add(Dense(256, activation='relu'))
         self.model.add(Dropout(0.2))
+        self.model.add(BatchNormalization())
         self.model.add(Dense(256, activation='relu'))
         self.model.add(Dropout(0.2))
-        self.model.add(Dense(nb_actions, activation='linear'))
+        self.model.add(BatchNormalization())
+        self.model.add(Dense(nb_actions, activation='sigmoid'))
 
         # Finally, we configure and compile our agent. You can use every built-in Keras optimizer and
         # even the metrics!
@@ -159,7 +154,7 @@ class Player:
                             target_model_update=1e-2, policy=policy,
                             processor=CustomProcessor(),
                             batch_size=batch_size, train_interval=train_interval, enable_double_dqn=enable_double_dqn)
-        self.dqn.compile(optimizer=Adam(lr=1e-3), metrics=['mae','accuracy'])
+        self.dqn.compile(optimizer=Adam(lr=1e-4), metrics=['mae','accuracy'])
 
     def start_step_policy(self, observation):
         """Custom policy for random decisions for warm up."""
@@ -169,29 +164,25 @@ class Player:
         return action
 
     def train(self, env_name):
-        """Train a model
-            TODO: find out why metrics are being logged as NaN
-        """
+        """ Train a model """
         # initiate training loop
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
         
         log_dir = "./tmp/metrics_{}".format(timestr)
-        metrics = FileLogger(log_dir)
+        metrics = FileLogger(filepath=log_dir, interval=10)
 
         """
         tensorboard = TensorBoard(log_dir='./Graph/train-fit/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
-        
-        interval_checkpoints = ModelCheckpoint(filepath='./Checkpoints/{}/ckpt'.format(timestr),interval=500)
-        
-
-        tensorboard = TensorBoard(log_dir=log_dir+timestr, histogram_freq=0, write_graph=True,
-                                  write_images=False)
         """
+
+        interval_checkpoints = ModelCheckpoint(filepath='./Checkpoints/{}/ckpt'.format(timestr),interval=1000)
         
         self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
-                     start_step_policy=self.start_step_policy, callbacks=[metrics])
-        
+                     start_step_policy=self.start_step_policy, callbacks=[metrics, interval_checkpoints])
+        """
+        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
+                     start_step_policy=self.start_step_policy)
         # Save the architecture
         """
         dqn_json = self.model.to_json()
@@ -202,7 +193,7 @@ class Player:
         # After training is done, we save the final weights.
         self.dqn.save_weights('dqn_{}_weights.h5'.format(env_name), overwrite=True)
 
-        
+        """
         tensorboard = TensorBoard(log_dir='./Graph/train-test/{}'.format(timestr), histogram_freq=0, write_graph=True,
                                   write_images=False)
         
@@ -318,6 +309,7 @@ class CustomProcessor(Processor):
         if 'legal_moves_limit' in self.__dict__ and self.legal_moves_limit is not None:
             self.legal_moves_limit = [move.value for move in self.legal_moves_limit]
             if action not in self.legal_moves_limit:
+                log.info('Action %s not in legal moves limit!'%action)
                 for i in range(5):
                     action += i
                     if action in self.legal_moves_limit:
@@ -326,4 +318,5 @@ class CustomProcessor(Processor):
                     if action in self.legal_moves_limit:
                         break
                     action += i
+                log.info('Choosen processed action: %s'%action)
         return action
