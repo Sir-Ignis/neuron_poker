@@ -11,10 +11,11 @@ import tensorflow as tf
 import json
 import matplotlib.pyplot as plt
 import pandas as pd
+import random
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.optimizers import Adam
 
 from rl.policy import GreedyQPolicy
@@ -28,12 +29,12 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 500  # before training starts, should be higher than start steps
-nb_steps = 100000
+nb_steps = 200000
 memory_limit = int(nb_steps / 2)
-batch_size = 512  # items sampled from memory to train
+batch_size = 256  # items sampled from memory to train
 enable_double_dqn = False
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__)    
 
 class ModelCheckpoint(ModelIntervalCheckpoint):
     def __init__(self, filepath, interval, verbose=0):
@@ -132,13 +133,16 @@ class Player:
         nb_actions = self.env.action_space.n
 
         self.model = Sequential()
-        self.model.add(Dense(256, activation='relu', input_shape=env.observation_space))
+        self.model.add(Dense(256, input_shape=env.observation_space))
+        self.model.add(LeakyReLU(alpha=0.5))
         self.model.add(Dropout(0.2))
         self.model.add(BatchNormalization())
-        self.model.add(Dense(256, activation='relu'))
+        self.model.add(Dense(256))
+        self.model.add(LeakyReLU(alpha=0.3))
         self.model.add(Dropout(0.2))
         self.model.add(BatchNormalization())
-        self.model.add(Dense(256, activation='relu'))
+        self.model.add(Dense(256))
+        self.model.add(LeakyReLU(alpha=0.3))
         self.model.add(Dropout(0.2))
         self.model.add(BatchNormalization())
         self.model.add(Dense(nb_actions, activation='sigmoid'))
@@ -154,7 +158,7 @@ class Player:
                             target_model_update=1e-2, policy=policy,
                             processor=CustomProcessor(),
                             batch_size=batch_size, train_interval=train_interval, enable_double_dqn=enable_double_dqn)
-        self.dqn.compile(optimizer=Adam(lr=1e-4), metrics=['mae','accuracy'])
+        self.dqn.compile(optimizer=Adam(lr=1e-4, clipnorm=1), metrics=['mae','accuracy'])
 
     def start_step_policy(self, observation):
         """Custom policy for random decisions for warm up."""
@@ -318,5 +322,7 @@ class CustomProcessor(Processor):
                     if action in self.legal_moves_limit:
                         break
                     action += i
+                if action not in self.legal_moves_limit:
+                    action = random.choice(self.legal_moves_limit)
                 log.info('Choosen processed action: %s'%action)
         return action
