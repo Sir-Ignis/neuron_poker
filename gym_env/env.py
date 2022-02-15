@@ -227,7 +227,7 @@ class HoldemTable(Env):
                 reward = self._calculate_reward(Action(action))
                 self.prev_stack_size = self.players[self.current_player.seat].stack
                 self._execute_step(Action(action))
-                #print('Max win player %s = %s'%(self.current_player.seat,self.player_max_win[self.current_player.seat]))
+
                 self.reward = reward
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
@@ -269,7 +269,6 @@ class HoldemTable(Env):
         self.community_data.big_blind = self.big_blind
         self.community_data.stage[np.minimum(self.stage.value, 3)] = 1  # pylint: disable= invalid-sequence-index
         self.community_data.legal_moves = [action in self.legal_moves for action in Action]
-        # self.cummunity_data.active_players
 
         self.player_data = PlayerData()
         self.player_data.stack = [player.stack / (self.big_blind * 100) for player in self.players]
@@ -287,7 +286,6 @@ class HoldemTable(Env):
         arr1 = np.array(list(flatten(self.player_data.__dict__.values())))
         arr2 = np.array(list(flatten(self.community_data.__dict__.values())))
         arr3 = np.array([list(flatten(sd.__dict__.values())) for sd in self.stage_data]).flatten()
-        # arr_legal_only = np.array(self.community_data.legal_moves).flatten()
 
         self.array_everything = np.concatenate([arr1, arr2, arr3]).flatten()
 
@@ -663,12 +661,11 @@ class HoldemTable(Env):
 
     def _get_legal_moves(self):
         """Determine what moves are allowed in the current state"""
-        self.legal_moves = []
+        self.legal_moves = [Action.FOLD]
         if self.player_pots[self.current_player.seat] == max(self.player_pots):
             self.legal_moves.append(Action.CHECK)
         else:
             self.legal_moves.append(Action.CALL)
-            self.legal_moves.append(Action.FOLD)
 
         if self.current_player.stack >= 3 * self.big_blind - self.player_pots[self.current_player.seat]:
             self.legal_moves.append(Action.RAISE_3BB)

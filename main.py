@@ -10,6 +10,7 @@ Usage:
   main.py selfplay dqn_play [options]
   main.py learn_table_scraping [options]
   main.py selfplay dqn_train_2 [options]
+  main.py selfplay dqn_play_2 [options]
 
 options:
   -h --help                 Show this screen.
@@ -84,6 +85,9 @@ def command_line_parser():
         # added extension for training heads up
         elif args['dqn_train_2']:
             runner.dqn_train_2_keras_rl(model_name)
+
+        elif args['dqn_play_2']:
+            runner.dqn_play_2_keras_rl(model_name)
     else:
         raise RuntimeError("Argument not yet implemented")
 
@@ -270,5 +274,20 @@ class SelfPlay:
         dqn = DQNPlayer()
         dqn.initiate_agent(env)
         dqn.train(env_name=model_name)
+
+    def dqn_play_2_keras_rl(self, model_name):
+        """Create 2 players, one of them uses DQN and the other is a random player"""
+        from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.agent_random import Player as RandomPlayer
+        env_name = 'neuron_poker-v0'
+        self.env = gym.make(env_name, initial_stacks=self.stack, render=self.render, funds_plot=self.funds_plot, 
+                           use_cpp_montecarlo=self.use_cpp_montecarlo)
+        self.env.add_player(RandomPlayer())
+        self.env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
+
+        self.env.reset()
+
+        dqn = DQNPlayer(load_model=model_name, env=self.env)
+        dqn.play(env_name=model_name, nb_steps=10000, render=self.render)
 if __name__ == '__main__':
     command_line_parser()

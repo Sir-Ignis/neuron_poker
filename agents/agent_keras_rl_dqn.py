@@ -14,7 +14,7 @@ import pandas as pd
 import random
 
 from tensorflow.keras.models import Sequential, model_from_json
-from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import TensorBoard, Callback
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.optimizers import Adam
 
@@ -29,12 +29,15 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 500  # before training starts, should be higher than start steps
-nb_steps = 200000
+nb_steps = 600000
 memory_limit = int(nb_steps / 2)
 batch_size = 256  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)    
+
+FILE_PATH = '../trained/tmp/'
+FILE_PATH_2 = '../test/tmp/'
 
 class ModelCheckpoint(ModelIntervalCheckpoint):
     def __init__(self, filepath, interval, verbose=0):
@@ -74,6 +77,8 @@ def plot_metrics(metrics_file_path):
     m1.plot(l, label='loss')
     m2.plot(a, label='accuracy')
     plt.show()
+    metrics_path = 'accuracy_and_loss.png'
+    fig.savefig(FILE_PATH_2+metrics_path)
 
 def plot_bbg(big_blinds_data):
     plt.xlabel('Episode')
@@ -93,6 +98,8 @@ def plot_cumulative_bb(big_blinds_data):
         y_pos.append(sum(big_blinds_data[:i+1]))
     print("x: %s, y: %s"%(len(x_pos),len(y_pos)))
     plt.plot(x_pos, y_pos, color='b')
+    bb_path = 'cumulative_bb_won.png'
+    plt.savefig(FILE_PATH_2+bb_path)
     plt.show()
 
 
@@ -134,7 +141,7 @@ class Player:
 
         self.model = Sequential()
         self.model.add(Dense(256, input_shape=env.observation_space))
-        self.model.add(LeakyReLU(alpha=0.5))
+        self.model.add(LeakyReLU(alpha=0.4))
         self.model.add(Dropout(0.2))
         self.model.add(BatchNormalization())
         self.model.add(Dense(256))
@@ -172,38 +179,24 @@ class Player:
         # initiate training loop
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
         
-        log_dir = "./tmp/metrics_{}".format(timestr)
+        log_dir = FILE_PATH+"metrics_{}".format(timestr)
         metrics = FileLogger(filepath=log_dir, interval=10)
 
-        """
-        tensorboard = TensorBoard(log_dir='./Graph/train-fit/{}'.format(timestr), histogram_freq=0, write_graph=True,
-                                  write_images=False)
-        """
-
-        interval_checkpoints = ModelCheckpoint(filepath='./Checkpoints/{}/ckpt'.format(timestr),interval=1000)
+        ckpt_dir = FILE_PATH+"{}/ckpt".format(timestr)
+        interval_checkpoints = ModelCheckpoint(filepath=ckpt_dir,interval=1000)
         
         self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
                      start_step_policy=self.start_step_policy, callbacks=[metrics, interval_checkpoints])
-        """
-        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
-                     start_step_policy=self.start_step_policy)
-        # Save the architecture
-        """
+
+        arch_dir = FILE_PATH+"dqn_{}_json.json".format(env_name)
         dqn_json = self.model.to_json()
-        with open("dqn_{}_json.json".format(env_name), "w") as json_file:
+        with open(arch_dir, "w") as json_file:
             json.dump(dqn_json, json_file)
 
 
         # After training is done, we save the final weights.
-        self.dqn.save_weights('dqn_{}_weights.h5'.format(env_name), overwrite=True)
-
-        """
-        tensorboard = TensorBoard(log_dir='./Graph/train-test/{}'.format(timestr), histogram_freq=0, write_graph=True,
-                                  write_images=False)
-        
-        # Finally, evaluate our algorithm for 10 episodes.
-        self.dqn.test(self.env, nb_episodes=10, visualize=False, callbacks=[tensorboard])
-        """
+        weights_dir = FILE_PATH+'dqn_{}_weights.h5'.format(env_name)
+        self.dqn.save_weights(weights_dir, overwrite=True)
         
         bbg = self.env.bbg_data
         games = self.env.games
@@ -227,36 +220,39 @@ class Player:
         self.model = model_from_json(dqn_json)
         self.model.load_weights('dqn_{}_weights.h5'.format(env_name))
 
-    def play(self, nb_episodes=5, render=False):
+    def play(self, env_name, nb_steps=10000, render=False):
         """Let the agent play"""
         memory = SequentialMemory(limit=memory_limit, window_length=window_length)
         policy = TrumpPolicy()
-
-        class CustomProcessor(Processor):  # pylint: disable=redefined-outer-name
-            """The agent and the environment"""
-
-            def process_state_batch(self, batch):
-                """
-                Given a state batch, I want to remove the second dimension, because it's
-                useless and prevents me from feeding the tensor into my CNN
-                """
-                return np.squeeze(batch, axis=1)
-
-            def process_info(self, info):
-                processed_info = info['player_data']
-                if 'stack' in processed_info:
-                    processed_info = {'x': 1}
-                return processed_info
-
+        timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)  
+        
+        ckpt_dir = FILE_PATH_2+"{}/ckpt".format(timestr)
+        interval_checkpoints = ModelCheckpoint(filepath=ckpt_dir,interval=1000)
         nb_actions = self.env.action_space.n
+        log_dir = FILE_PATH_2+"metrics_{}".format(timestr)
+        metrics = FileLogger(filepath=log_dir, interval=10)
 
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=nb_steps_warmup,
                             target_model_update=1e-2, policy=policy,
                             processor=CustomProcessor(),
                             batch_size=batch_size, train_interval=train_interval, enable_double_dqn=enable_double_dqn)
-        self.dqn.compile(Adam(lr=1e-3), metrics=['mae'])  # pylint: disable=no-member
+        
 
-        self.dqn.test(self.env, nb_episodes=nb_episodes, visualize=render)
+        self.dqn.compile(optimizer=Adam(lr=1e-4, clipnorm=1), metrics=['mae','accuracy']) # pylint: disable=no-member
+
+        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
+                     start_step_policy=self.start_step_policy, callbacks=[metrics, interval_checkpoints])
+
+        bbg = self.env.bbg_data
+        games = self.env.games
+        hands = self.env.hands
+        if(games == 0):
+            print('Error: no games were completed!')
+        else:
+            plot_metrics(log_dir)
+            plot_cumulative_bb(bbg)
+            wr = win_rate(hands, bbg)
+            print('Win rate (bb/100) = %s'%wr)
 
     def action(self, action_space, observation, info):  # pylint: disable=no-self-use
         """Mandatory method that calculates the move based on the observation array and the action space."""
