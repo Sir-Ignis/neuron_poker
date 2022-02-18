@@ -174,7 +174,7 @@ class Player:
         action = self.env.action_space.sample()
         return action
 
-    def train(self, env_name):
+    def train(self, env_name, steps):
         """ Train a model """
         # initiate training loop
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
@@ -185,9 +185,10 @@ class Player:
         ckpt_dir = FILE_PATH+"{}/ckpt".format(timestr)
         interval_checkpoints = ModelCheckpoint(filepath=ckpt_dir,interval=1000)
         
-        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=nb_steps, visualize=False, verbose=2,
+        self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=steps, visualize=False, verbose=2,
                      start_step_policy=self.start_step_policy, callbacks=[metrics, interval_checkpoints])
 
+        
         arch_dir = FILE_PATH+"dqn_{}_json.json".format(env_name)
         dqn_json = self.model.to_json()
         with open(arch_dir, "w") as json_file:
@@ -220,7 +221,7 @@ class Player:
         self.model = model_from_json(dqn_json)
         self.model.load_weights('dqn_{}_weights.h5'.format(env_name))
 
-    def play(self, env_name, nb_steps=10000, render=False):
+    def play(self, env_name='dqn', nb_steps=10000, render=False):
         """Let the agent play"""
         memory = SequentialMemory(limit=memory_limit, window_length=window_length)
         policy = TrumpPolicy()

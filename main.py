@@ -11,6 +11,7 @@ Usage:
   main.py learn_table_scraping [options]
   main.py selfplay dqn_train_2 [options]
   main.py selfplay dqn_play_2 [options]
+  main.py selfplay dqn_play_human [options]
 
 options:
   -h --help                 Show this screen.
@@ -21,6 +22,7 @@ options:
   --name=<>                 Name of the saved model
   --screenloglevel=<>       log level on screen
   --episodes=<>             number of episodes to play
+  --steps=<>                number of steps to train for
   --stack=<>                starting stack for each player [default: 500].
 
 """
@@ -62,6 +64,7 @@ def command_line_parser():
                           use_cpp_montecarlo=args['--use_cpp_montecarlo'],
                           funds_plot=args['--funds_plot'],
                           stack=int(args['--stack']))
+        nb_steps = 10000 if not args['--steps'] else int(args['--steps'])
 
         if args['random']:
             runner.random_agents()
@@ -84,10 +87,13 @@ def command_line_parser():
 
         # added extension for training heads up
         elif args['dqn_train_2']:
-            runner.dqn_train_2_keras_rl(model_name)
+            runner.dqn_train_2_keras_rl(model_name, nb_steps)
 
         elif args['dqn_play_2']:
-            runner.dqn_play_2_keras_rl(model_name)
+            runner.dqn_play_2_keras_rl(model_name, nb_steps)
+
+        elif args['dqn_play_human']:
+            runner.dqn_play_human_keras_rl(model_name, nb_steps)
     else:
         raise RuntimeError("Argument not yet implemented")
 
@@ -257,7 +263,7 @@ class SelfPlay:
         print(league_table)
         print(f"Best Player: {best_player}")
 
-    def dqn_train_2_keras_rl(self, model_name):
+    def dqn_train_2_keras_rl(self, model_name, nb_steps):
         """Create 2 players, one of them uses DQN and the other is a random player"""
         from agents.agent_keras_rl_dqn import Player as DQNPlayer
         from agents.agent_random import Player as RandomPlayer
@@ -273,9 +279,9 @@ class SelfPlay:
 
         dqn = DQNPlayer()
         dqn.initiate_agent(env)
-        dqn.train(env_name=model_name)
+        dqn.train(env_name=model_name, steps=nb_steps)
 
-    def dqn_play_2_keras_rl(self, model_name):
+    def dqn_play_2_keras_rl(self, model_name, nb_steps):
         """Create 2 players, one of them uses DQN and the other is a random player"""
         from agents.agent_keras_rl_dqn import Player as DQNPlayer
         from agents.agent_random import Player as RandomPlayer
@@ -288,6 +294,21 @@ class SelfPlay:
         self.env.reset()
 
         dqn = DQNPlayer(load_model=model_name, env=self.env)
-        dqn.play(env_name=model_name, nb_steps=10000, render=self.render)
+        dqn.play(env_name=model_name, nb_steps=nb_steps, render=self.render)
+
+    def dqn_play_human_keras_rl(self, model_name, nb_steps):
+        """Create 2 players, one of them uses DQN and the other is a human player"""
+        from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.agent_keypress import Player as KeyPressAgent
+        env_name = 'neuron_poker-v0'
+        self.env = gym.make(env_name, initial_stacks=self.stack, render=self.render, funds_plot=self.funds_plot, 
+                           use_cpp_montecarlo=self.use_cpp_montecarlo)
+        self.env.add_player(KeyPressAgent())
+        self.env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
+
+        self.env.reset()
+
+        dqn = DQNPlayer(load_model=model_name, env=self.env)
+        dqn.play(env_name=model_name, nb_steps=nb_steps, render=self.render)
 if __name__ == '__main__':
     command_line_parser()
