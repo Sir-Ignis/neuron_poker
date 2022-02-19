@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1127</width>
+    <height>817</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QLabel" name="communityCardsLabel">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>190</y>
+      <width>151</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Community Cards</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="communityCard1">
+    <property name="geometry">
+     <rect>
+      <x>270</x>
+      <y>240</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/AD.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="communityCard2">
+    <property name="geometry">
+     <rect>
+      <x>403</x>
+      <y>240</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/KD.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="communityCard3">
+    <property name="geometry">
+     <rect>
+      <x>538</x>
+      <y>240</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/QD.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="communityCard4">
+    <property name="geometry">
+     <rect>
+      <x>671</x>
+      <y>240</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/JD.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="communityCard5">
+    <property name="geometry">
+     <rect>
+      <x>804</x>
+      <y>240</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/10D.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="tableSprite">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>80</y>
+      <width>901</width>
+      <height>411</height>
+     </rect>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/table_top_empty.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="checkButton">
+    <property name="geometry">
+     <rect>
+      <x>275</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CHECK</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="raiseButton">
+    <property name="geometry">
+     <rect>
+      <x>565</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>RAISE</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="callButton">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CALL</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="foldButton">
+    <property name="geometry">
+     <rect>
+      <x>710</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>FOLD</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="playerCard1">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>550</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/AC.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="playerCard2">
+    <property name="geometry">
+     <rect>
+      <x>560</x>
+      <y>550</y>
+      <width>88</width>
+      <height>124</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/2C.png</pixmap>
+    </property>
+   </widget>
+   <widget class="QLabel" name="playerHandLabel">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>510</y>
+      <width>201</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Player Chips: $500</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="playerHandLabel_2">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>40</y>
+      <width>201</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Opponent Chips: $500</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="playerHandLabel_3">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>20</y>
+      <width>201</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Last Action: CHECK</string>
+    </property>
+   </widget>
+   <zorder>tableSprite</zorder>
+   <zorder>communityCard2</zorder>
+   <zorder>communityCard1</zorder>
+   <zorder>communityCard3</zorder>
+   <zorder>communityCard4</zorder>
+   <zorder>communityCard5</zorder>
+   <zorder>communityCardsLabel</zorder>
+   <zorder>checkButton</zorder>
+   <zorder>raiseButton</zorder>
+   <zorder>callButton</zorder>
+   <zorder>foldButton</zorder>
+   <zorder>playerCard1</zorder>
+   <zorder>playerCard2</zorder>
+   <zorder>playerHandLabel</zorder>
+   <zorder>playerHandLabel_2</zorder>
+   <zorder>playerHandLabel_3</zorder>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1127</width>
+     <height>19</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

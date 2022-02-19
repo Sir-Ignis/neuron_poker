@@ -1,5 +1,7 @@
 """Groupier functions"""
 import logging
+import sys
+
 from enum import Enum
 
 import matplotlib.pyplot as plt
@@ -9,6 +11,7 @@ from gym import Env
 from gym.spaces import Discrete
 
 from gym_env.rendering import PygletWindow, WHITE, RED, GREEN, BLUE
+from GUI.GUI import *
 from tools.hand_evaluator import get_winner
 from tools.helper import flatten
 
@@ -17,6 +20,14 @@ from tools.helper import flatten
 log = logging.getLogger(__name__)
 
 winner_in_episodes = []
+
+initial_render = False
+ui = None
+
+def action_file_read():
+    file_path = "/home/daniel/Project/neuron_poker/GUI/action.txt"
+    f = open(file_path, "r")
+    return f.read()
 
 class CommunityData:
     """Data available to everybody"""
@@ -142,6 +153,7 @@ class HoldemTable(Env):
         self.funds_plot = funds_plot
         self.max_round_raising = max_raising_rounds
         self.bbg_data = []
+        self.last_action = None
 
         # pots
         self.community_pot = 0
@@ -205,7 +217,12 @@ class HoldemTable(Env):
                 log.debug("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
-                action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
+                action = -1
+                if not self.render_switch:
+                    action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
+                else:
+                    s = action_file_read()
+                    action = int(s.split()[0])
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
@@ -227,7 +244,7 @@ class HoldemTable(Env):
                 reward = self._calculate_reward(Action(action))
                 self.prev_stack_size = self.players[self.current_player.seat].stack
                 self._execute_step(Action(action))
-
+                self.last_action = Action(action)
                 self.reward = reward
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
@@ -301,6 +318,8 @@ class HoldemTable(Env):
 
         if self.render_switch:
             self.render()
+            if self.current_player.seat == 0:
+                self.render_2()
 
     def _calculate_reward(self, action):
         """Reward function for agent"""
@@ -776,6 +795,31 @@ class HoldemTable(Env):
                 pass
 
         self.viewer.update()
+
+    def initial_render_ui(self):
+        global ui
+        app = QtWidgets.QApplication(sys.argv)
+        MainWindow = QtWidgets.QMainWindow()
+        ui = Ui_MainWindow()
+        ui.setupUi(MainWindow)
+        self.render_()
+        MainWindow.show()
+        app.exec()
+
+    def render_(self):
+        global ui
+        ui.renderTableCards(self.table_cards)
+        ui.renderHandCards(self.players[0].cards)
+        ui.renderChipAmounts(self.players[0].stack,self.players[1].stack)
+        ui.renderLastAction(self.last_action)
+        ui.renderActionButtons(self.legal_moves)
+
+
+    def render_2(self, mode='human'):
+        if not initial_render:
+            self.initial_render_ui()
+        else:
+            self.render_()
 
 
 class PlayerCycle:
