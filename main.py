@@ -28,7 +28,6 @@ options:
 """
 
 import logging
-
 import gym
 import numpy as np
 import pandas as pd
@@ -301,6 +300,7 @@ class SelfPlay:
         from agents.agent_keras_rl_dqn import Player as DQNPlayer
         from agents.agent_keypress import Player as KeyPressAgent
         env_name = 'neuron_poker-v0'
+
         self.env = gym.make(env_name, initial_stacks=self.stack, render=self.render, funds_plot=self.funds_plot, 
                            use_cpp_montecarlo=self.use_cpp_montecarlo)
         self.env.add_player(KeyPressAgent())
@@ -310,5 +310,7 @@ class SelfPlay:
 
         dqn = DQNPlayer(load_model=model_name, env=self.env)
         dqn.play(env_name=model_name, nb_steps=nb_steps, render=self.render)
+
+
 if __name__ == '__main__':
     command_line_parser()

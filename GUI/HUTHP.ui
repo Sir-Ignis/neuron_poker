@@ -215,7 +215,7 @@
      <pixmap>resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/2C.png</pixmap>
     </property>
    </widget>
-   <widget class="QLabel" name="playerHandLabel">
+   <widget class="QLabel" name="playerChipsLabel">
     <property name="geometry">
      <rect>
       <x>450</x>
@@ -233,7 +233,7 @@
      <string>Player Chips: $500</string>
     </property>
    </widget>
-   <widget class="QLabel" name="playerHandLabel_2">
+   <widget class="QLabel" name="opponentChipsLabel">
     <property name="geometry">
      <rect>
       <x>450</x>
@@ -251,7 +251,7 @@
      <string>Opponent Chips: $500</string>
     </property>
    </widget>
-   <widget class="QLabel" name="playerHandLabel_3">
+   <widget class="QLabel" name="opponentLastActionLabel">
     <property name="geometry">
      <rect>
       <x>450</x>
@@ -282,9 +282,9 @@
    <zorder>foldButton</zorder>
    <zorder>playerCard1</zorder>
    <zorder>playerCard2</zorder>
-   <zorder>playerHandLabel</zorder>
-   <zorder>playerHandLabel_2</zorder>
-   <zorder>playerHandLabel_3</zorder>
+   <zorder>playerChipsLabel</zorder>
+   <zorder>opponentChipsLabel</zorder>
+   <zorder>opponentLastActionLabel</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
