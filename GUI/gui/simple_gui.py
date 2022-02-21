@@ -39,6 +39,7 @@ class Widget(QtWidgets.QWidget):
 if __name__ == "__main__":
     os.environ["PYTHONUNBUFFERED"] = "1"
 
+
     app = QtWidgets.QApplication(sys.argv)
     w = Widget()
     w.show()

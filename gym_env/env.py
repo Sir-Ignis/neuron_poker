@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 winner_in_episodes = []
 
+
 class CommunityData:
     """Data available to everybody"""
 
@@ -165,6 +166,15 @@ class HoldemTable(Env):
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
+    def action_file_write(self):
+        file_path = "/home/daniel/Project/neuron_poker/process_info/info.txt"
+        f = open(file_path, "r+")
+        if not(self.last_action == None):
+            data = [str(self.last_action), str(self.players[1].stack), str(self.table_cards), str(self.players[0].stack), str(self.players[0].cards)]
+            for item in data:
+                f.writelines(item+'\n')
+        f.close()
+
     def reset(self):
         """Reset after game over."""
         self.games += 1
@@ -201,6 +211,8 @@ class HoldemTable(Env):
         # until either the env id sone, or an agent is just a shell and
         # and will get a call from to the step function externally (e.g. via
         # keras-rl
+        if self.render_switch:
+            self.action_file_write()
         self.reward = 0
         self.acting_agent = self.player_cycle.idx
         if self._agent_is_autoplay():
@@ -208,6 +220,14 @@ class HoldemTable(Env):
                 log.debug("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
+                if self.render_switch:
+                    data = dict(legal_moves=[move.value for move in self.legal_moves], last_action=self.last_action.value, \
+                               opponent_stack=self.players[1].stack, table_cards=self.table_cards, \
+                               player_stack=self.players[0].stack, player_cards=self.players[0].cards)
+                    
+                    print('GUI INFO: '+str(data))
+                    
+                    #print('GUI INFO: '+str([move.value for move in self.legal_moves]))
                 action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
@@ -454,6 +474,12 @@ class HoldemTable(Env):
 
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
+        if self.render_switch:
+            # clear file
+            file_path = "/home/daniel/Project/neuron_poker/process_info/info.txt"
+            f = open(file_path,"w")
+            f.close()
+
         self.amount_won += self.players[1].stack 
         self._save_funds_history()
 
