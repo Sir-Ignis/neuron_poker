@@ -37,6 +37,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.ui.startButton.clicked.connect(self.start_main)
         self.data = []
+        self.raise_btns = []
 
     def start_main(self):
         self.setup_main_ui()
@@ -60,13 +61,35 @@ class MainWindow(QtWidgets.QMainWindow):
     def connect_buttons(self):
         self.ui.callButton.clicked.connect(self.callAction)
         self.ui.checkButton.clicked.connect(self.checkAction)
+        self.ui.raiseButton.clicked.connect(self.raiseAction)
         self.ui.foldButton.clicked.connect(self.foldAction)
+
+        self.ui.raise3bbButton.clicked.connect(self.raise3bbAction)
+        self.ui.raise2PotButton.clicked.connect(self.raise2PotAction)
+        self.ui.raisePotButton.clicked.connect(self.raisePotAction)
+        self.ui.allinButton.clicked.connect(self.allinAction)
 
     def toggle_buttons(self, enable=False):
         self.ui.callButton.setEnabled(enable)
         self.ui.checkButton.setEnabled(enable)
         self.ui.foldButton.setEnabled(enable)
-        self.ui.raiseButton.setEnabled(False)
+        self.ui.raiseButton.setEnabled(enable)
+
+    def hide_buttons(self):
+        self.ui.checkButton.hide()
+        self.ui.callButton.hide()
+        self.ui.raiseButton.hide()
+        self.ui.foldButton.hide()
+
+    def hide_raise_buttons(self):
+        self.ui.raise3bbButton.hide()
+        self.ui.raise3bbButton.lower()
+        self.ui.raise2PotButton.hide()
+        self.ui.raise2PotButton.lower()
+        self.ui.raisePotButton.hide()
+        self.ui.raisePotButton.lower()
+        self.ui.allinButton.hide()
+        self.ui.allinButton.lower()
 
     def parseData(self, data):
         info = data
@@ -77,7 +100,7 @@ class MainWindow(QtWidgets.QMainWindow):
         info_str = info_str.replace('GUI INFO: ','')
         info_dict = ast.literal_eval(info_str)
 
-        self.renderActionButtons(info_dict['legal_moves'])
+        self.raise_btns = self.renderActionButtons(info_dict['legal_moves'])
         self.render_table(info_dict)
 
     def handle_stdout(self):
@@ -91,6 +114,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.toggle_buttons(True)
         elif self.ui.callButton.isEnabled():
             self.toggle_buttons(False)
+        if data_.contains('INFO - Starting new hand.'.encode("utf8")):
+            self.clear_table()
         stdout = bytes(data).decode("utf8")
         print(stdout)
 
@@ -114,11 +139,41 @@ class MainWindow(QtWidgets.QMainWindow):
         s = str(Action.CHECK.value) + "\n"
         self.p.write(s.encode("utf8"))
         
-
     @pyqtSlot()
     def foldAction(self):
         s = str(Action.FOLD.value) + "\n"
         self.p.write(s.encode("utf8"))
+
+    @pyqtSlot()
+    def raiseAction(self):
+        self.render_raise_btns()
+        self.hide_buttons()
+
+    @pyqtSlot()
+    def raise3bbAction(self):
+        s = str(Action.RAISE_3BB.value) + "\n"
+        self.p.write(s.encode("utf8"))
+        self.hide_raise_buttons()
+    
+    @pyqtSlot()
+    def raisePotAction(self):
+        s = str(Action.RAISE_POT.value) + "\n"
+        self.p.write(s.encode("utf8"))
+        self.hide_raise_buttons()
+
+    @pyqtSlot()
+    def raise2PotAction(self):
+        s = str(Action.RAISE_2POT.value) + "\n"
+        self.p.write(s.encode("utf8"))
+        self.hide_raise_buttons()
+
+    @pyqtSlot()
+    def allinAction(self):
+        s = str(Action.ALL_IN.value) + "\n"
+        self.p.write(s.encode("utf8"))
+        self.hide_raise_buttons()
+
+
  
     def read_process_info(self):
         file_path = "/home/daniel/Project/neuron_poker/process_info/info.txt"
@@ -132,6 +187,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.data)
 
     def renderActionButtons(self, legal_action_values):
+        print(f'called renderActionButtons with legal_action_values: {legal_action_values}')
         raise_3bb = False
         raise_pot = False
         raise_2pot = False
@@ -139,13 +195,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         legal_values = legal_action_values
 
+        if Action.FOLD.value in legal_values:
+            self.ui.foldButton.show()
+            self.ui.foldButton.raise_()
+        else:
+            self.ui.foldButton.hide()
         if Action.CHECK.value in legal_values:
             self.ui.checkButton.show()
+            self.ui.checkButton.raise_()
         else:
             self.ui.checkButton.hide()
         
         if Action.CALL.value in legal_values:
             self.ui.callButton.show()
+            self.ui.callButton.raise_()
         else:
             self.ui.callButton.hide()
         
@@ -160,17 +223,38 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if raise_3bb or raise_pot or raise_2pot or all_in:
             self.ui.raiseButton.show()
+            self.ui.checkButton.raise_()
         else:
             self.ui.raiseButton.hide()
 
+        self.hide_raise_buttons()
         return [raise_3bb, raise_pot, raise_2pot, all_in]
+
+    def render_raise_btns(self):
+        if self.raise_btns[0]:
+            self.ui.raise3bbButton.show()
+        else:
+            self.ui.raise3bbButton.hide()
+        if self.raise_btns[1]:
+            self.ui.raisePotButton.show()
+        else:
+            self.ui.raisePotButton.hide()
+        if self.raise_btns[2]:
+            self.ui.raise2PotButton.show()
+        else:
+            self.ui.raise2PotButton.hide()
+        if self.raise_btns[3]:
+            self.ui.allinButton.show()
+        else:
+            self.ui.allinButton.hide()
+        
 
 
     def render_table(self, info_dict): 
         sprite_path = "/home/daniel/Project/neuron_poker/GUI/resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/"
         d = info_dict
 
-        self.ui.opponentLastActionLabel.setText("Last Action: "+str(d['last_action']))
+        self.ui.opponentLastActionLabel.setText("Last Action: "+self.action_val_to_string(d['last_action']))
         self.ui.opponentChipsLabel.setText("Opponent Chips: $"+ str(d['opponent_stack']))
         table_cards = d['table_cards']
         for i in range(len(table_cards)):
@@ -189,6 +273,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.playerCard1.setPixmap(QtGui.QPixmap(sprite_path+player_cards[0]+'.png'))
         self.ui.playerCard2.setPixmap(QtGui.QPixmap(sprite_path+player_cards[1]+'.png'))
 
+
+    def action_val_to_string(self, action_value):
+        return Action(action_value).name.replace('_',' ')
+
+    def clear_table(self):
+        self.ui.communityCard1.setPixmap(QtGui.QPixmap())
+        self.ui.communityCard2.setPixmap(QtGui.QPixmap())
+        self.ui.communityCard3.setPixmap(QtGui.QPixmap())
+        self.ui.communityCard4.setPixmap(QtGui.QPixmap())
+        self.ui.communityCard5.setPixmap(QtGui.QPixmap())
+
+        self.ui.playerCard1.setPixmap(QtGui.QPixmap())
+        self.ui.playerCard2.setPixmap(QtGui.QPixmap())
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)

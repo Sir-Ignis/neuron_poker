@@ -269,6 +269,68 @@
      <string>Last Action: CHECK</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="raisePotButton">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>275</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>RAISE POT</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="raise2PotButton">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>RAISE 2 POT</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="raise3bbButton">
+    <property name="geometry">
+     <rect>
+      <x>565</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>RAISE 3BB</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="allinButton">
+    <property name="geometry">
+     <rect>
+      <x>710</x>
+      <y>710</y>
+      <width>111</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ALL IN</string>
+    </property>
+   </widget>
+   <zorder>allinButton</zorder>
+   <zorder>raise3bbButton</zorder>
+   <zorder>raise2PotButton</zorder>
+   <zorder>raisePotButton</zorder>
    <zorder>tableSprite</zorder>
    <zorder>communityCard2</zorder>
    <zorder>communityCard1</zorder>
