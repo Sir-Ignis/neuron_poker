@@ -11,7 +11,20 @@ from PyQt6.QtCore import QProcess, QByteArray, pyqtSlot
 from menu import Menu_MainWindow
 from HUTHP import Ui_MainWindow
 
-os.chdir("/home/daniel/Project/neuron_poker")
+
+PROJECT_PATH = '/home/daniel/Project/neuron_poker/' # replace with where your neuron_poker git is stored
+RESOURCES_PATH = PROJECT_PATH+'/GUI/res/'
+SPRITES_PATH = RESOURCES_PATH+'sprites/'
+CARD_SPRITES_PATH = SPRITES_PATH+'cards/'
+CHIP_SPRITES_PATH = SPRITES_PATH+'chips/'
+TABLE_SPRITES_PATH = SPRITES_PATH+'table/'
+
+LOG_ACTION_STRING = 'Choose action with number: '
+LOG_DEALER_POS_STRING = 'Dealer is at position'
+LOG_GUI_INFO_STRING = 'GUI INFO: '
+LOG_NEW_HAND_STRING = 'INFO - Starting new hand.'
+
+os.chdir(PROJECT_PATH)
 
 class Action(Enum):
     """Allowed actions"""
@@ -38,6 +51,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.startButton.clicked.connect(self.start_main)
         self.data = []
         self.raise_btns = []
+
+    def closeEvent(self, event):
+        if not(self.p == None):
+            print('Terminating process due to window close...')
+            self.p.terminate()
+            self.p.waitForFinished()
+            self.p = None
+        event.accept()
 
     def start_main(self):
         self.setup_main_ui()
@@ -94,20 +115,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def parseData(self, data):
         info = data
-        idx = data.indexOf('Choose action with number: '.encode("utf8"))
+        idx = data.indexOf(LOG_ACTION_STRING.encode("utf8"))
         info.truncate(idx)
         
         info_str = str(info, "utf8")
-        info_str = info_str.replace('GUI INFO: ','')
-        info_dict = ast.literal_eval(info_str)
+        info_str = info_str.replace(LOG_GUI_INFO_STRING,'')
+        info_dict = dict()
+        try:
+            info_dict = ast.literal_eval(info_str)
+        except Exception as e:
+            print(e)
 
-        self.raise_btns = self.renderActionButtons(info_dict['legal_moves'])
-        self.render_table(info_dict)
+        if 'legal_moves' in info_dict:
+            self.raise_btns = self.renderActionButtons(info_dict['legal_moves'])
+            self.render_table(info_dict)
+        else:
+            print('legal moves key not in info_dict!')
+            print('Likely cause: you spammed the buttons...')
+            self.close()
 
     def renderDealerButton(self, data):
         info = data
         tmp = str(data,'utf8')
-        idx = data.indexOf('Dealer is at position'.encode("utf8"))
+        idx = data.indexOf(LOG_DEALER_POS_STRING.encode("utf8"))
         info = info.sliced(idx)
         dealer_str = str(info, "utf8")
         dealer_str = dealer_str.split('\n')[0][-1]
@@ -130,19 +160,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.dealerButton.move(a[1][0], a[1][1])
 
     def handle_stdout(self):
+        """ updates gui based on info read from process, i.e. info read from the terminal"""
         print('called stdout')
+        self.toggle_buttons(False)
+
         data = self.p.readAllStandardOutput()
         data_ = QByteArray(data)
-        if data_.contains('GUI INFO: '.encode("utf8")):
-            self.parseData(data_)
-        if(data.contains('Choose action with number: '.encode("utf8"))):
-            #self.render_table()
+
+        if(data.contains(LOG_ACTION_STRING.encode("utf8"))):
             self.toggle_buttons(True)
-        elif self.ui.callButton.isEnabled():
-            self.toggle_buttons(False)
-        if data_.contains('INFO - Starting new hand.'.encode("utf8")):
+        if data_.contains(LOG_GUI_INFO_STRING.encode("utf8")):
+            self.parseData(data_)
+        if data_.contains(LOG_NEW_HAND_STRING.encode("utf8")):
             self.clear_table()
-        if data_.contains('Dealer is at position'.encode("utf8")):
+        if data_.contains(LOG_DEALER_POS_STRING.encode("utf8")):
             self.renderDealerButton(data_)
         stdout = bytes(data).decode("utf8")
         print(stdout)
@@ -163,7 +194,6 @@ class MainWindow(QtWidgets.QMainWindow):
         
     @pyqtSlot()
     def checkAction(self):
-        #self.read_process_info()
         s = str(Action.CHECK.value) + "\n"
         self.p.write(s.encode("utf8"))
         
@@ -201,21 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.p.write(s.encode("utf8"))
         self.hide_raise_buttons()
 
-
- 
-    def read_process_info(self):
-        file_path = "/home/daniel/Project/neuron_poker/process_info/info.txt"
-        f = open(file_path)
-        lines = f.readlines()
-        f.close()
-        self.data = []
-        for i in lines:
-            i = i.replace("\n",'')
-            self.data.append(i)
-        print(self.data)
-
     def renderActionButtons(self, legal_action_values):
-        print(f'called renderActionButtons with legal_action_values: {legal_action_values}')
         raise_3bb = False
         raise_pot = False
         raise_2pot = False
@@ -277,13 +293,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.allinButton.hide()
         
     def renderSprites(self):
-        table_top_path = "/home/daniel/Project/neuron_poker/GUI/resources/table_top_empty.png"
-        dealer_btn_path = "/home/daniel/Project/neuron_poker/GUI/resources/SBS - 2D Poker Pack/Top-Down/Chips/Template/Dealer_Chip.png"
+        table_top_path = TABLE_SPRITES_PATH+"table_top_empty.png"
+        dealer_btn_path = CHIP_SPRITES_PATH+"Dealer_Chip.png"
         self.ui.tableSprite.setPixmap(QtGui.QPixmap(table_top_path))
         self.ui.dealerButton.setPixmap(QtGui.QPixmap(dealer_btn_path))
 
     def render_table(self, info_dict): 
-        sprite_path = "/home/daniel/Project/neuron_poker/GUI/resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/"
+        sprite_path = CARD_SPRITES_PATH
         d = info_dict
 
         self.ui.potLabel.setText("Pot: $"+str(d['pot']))
@@ -325,6 +341,3 @@ if __name__ == '__main__':
     MainWindow = MainWindow()
     MainWindow.show()
     sys.exit(app.exec())
-    file_path = "/home/daniel/Project/neuron_poker/process_info/info.txt"
-    f = open(file_path,"w")
-    f.close()

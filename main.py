@@ -305,7 +305,7 @@ class SelfPlay:
                            use_cpp_montecarlo=self.use_cpp_montecarlo)
         self.env.add_player(KeyPressAgent())
         self.env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
-
+        
         self.env.reset()
 
         dqn = DQNPlayer(load_model=model_name, env=self.env)
