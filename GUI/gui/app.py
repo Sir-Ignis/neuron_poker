@@ -55,6 +55,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_main_ui(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.renderSprites()
         self.toggle_buttons(False)
         self.connect_buttons()
 
@@ -103,6 +104,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.raise_btns = self.renderActionButtons(info_dict['legal_moves'])
         self.render_table(info_dict)
 
+    def renderDealerButton(self, data):
+        info = data
+        tmp = str(data,'utf8')
+        idx = data.indexOf('Dealer is at position'.encode("utf8"))
+        info = info.sliced(idx)
+        dealer_str = str(info, "utf8")
+        dealer_str = dealer_str.split('\n')[0][-1]
+        dealer_pos = int(dealer_str)
+
+        player_btn_label_coords = (310, 550)
+        player_btn_coords = (305, 580)
+        p = (player_btn_label_coords, player_btn_coords)
+
+        agent_btn_label_coords = (332, 20)
+        agent_btn_coords = (330, 40)
+        a = (agent_btn_label_coords, agent_btn_coords)
+
+        # player is dealer
+        if dealer_pos == 0:
+            self.ui.dealerLabel.move(p[0][0], p[0][1])
+            self.ui.dealerButton.move(p[1][0], p[1][1])
+        else:
+            self.ui.dealerLabel.move(a[0][0], a[0][1])
+            self.ui.dealerButton.move(a[1][0], a[1][1])
+
     def handle_stdout(self):
         print('called stdout')
         data = self.p.readAllStandardOutput()
@@ -116,6 +142,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.toggle_buttons(False)
         if data_.contains('INFO - Starting new hand.'.encode("utf8")):
             self.clear_table()
+        if data_.contains('Dealer is at position'.encode("utf8")):
+            self.renderDealerButton(data_)
         stdout = bytes(data).decode("utf8")
         print(stdout)
 
@@ -248,12 +276,17 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.ui.allinButton.hide()
         
-
+    def renderSprites(self):
+        table_top_path = "/home/daniel/Project/neuron_poker/GUI/resources/table_top_empty.png"
+        dealer_btn_path = "/home/daniel/Project/neuron_poker/GUI/resources/SBS - 2D Poker Pack/Top-Down/Chips/Template/Dealer_Chip.png"
+        self.ui.tableSprite.setPixmap(QtGui.QPixmap(table_top_path))
+        self.ui.dealerButton.setPixmap(QtGui.QPixmap(dealer_btn_path))
 
     def render_table(self, info_dict): 
         sprite_path = "/home/daniel/Project/neuron_poker/GUI/resources/SBS - 2D Poker Pack/Top-Down/Cards/individual/"
         d = info_dict
 
+        self.ui.potLabel.setText("Pot: $"+str(d['pot']))
         self.ui.opponentLastActionLabel.setText("Last Action: "+self.action_val_to_string(d['last_action']))
         self.ui.opponentChipsLabel.setText("Opponent Chips: $"+ str(d['opponent_stack']))
         table_cards = d['table_cards']
