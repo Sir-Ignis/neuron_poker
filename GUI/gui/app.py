@@ -168,6 +168,7 @@ class MainWindow(QtWidgets.QMainWindow):
         data_ = QByteArray(data)
 
         if(data.contains(LOG_ACTION_STRING.encode("utf8"))):
+            # when first log_action_string is shown is when the ui is fully ready
             self.toggle_buttons(True)
         if data_.contains(LOG_GUI_INFO_STRING.encode("utf8")):
             self.parseData(data_)

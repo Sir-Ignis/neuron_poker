@@ -225,13 +225,20 @@ class HoldemTable(Env):
                     self._execute_step(Action(action))
                     if self.first_action_for_hand[self.acting_agent] or self.done:
                         self.first_action_for_hand[self.acting_agent] = False
-                        self._calculate_reward(action)
+                        self._old_calculate_reward(action)
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
+                #using old reward function
+                self._execute_step(Action(action))
+                if self.first_action_for_hand[self.acting_agent] or self.done:
+                    self.first_action_for_hand[self.acting_agent] = False
+                    self._old_calculate_reward(action)
+                """
+                # using improved reward function
                 self.player_data = PlayerData()
                 self.player_data.position = self.current_player.seat
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
@@ -242,6 +249,7 @@ class HoldemTable(Env):
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 self.reward = reward
+                """
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
@@ -340,6 +348,17 @@ class HoldemTable(Env):
         else:
             pass
         return reward
+
+    def _old_calculate_reward(self, action):
+        """Reward function used by the original Neuron Poker"""
+        if self.done:
+            won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
+            self.reward = self.initial_stacks * len(self.players) * won
+            log.debug(f"Keras-rl agent has reward {self.reward}")
+
+        elif len(self.funds_history) > 1:
+            self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
+                -2, self.acting_agent]
 
     def _contribution(self, action):
         """returns the contribution amount for a given action"""
