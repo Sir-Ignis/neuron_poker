@@ -343,10 +343,8 @@ class HoldemTable(Env):
             reward = expected_value 
             #print("reward = %s"%reward)
         elif action == Action.FOLD:
-            reward = -self.player_pots[self.current_player.seat]
+            reward = -self.player_pots[self.current_player.seat]-sum(np.minimum(self.player_max_win[1], self.player_max_win)) - self._contribution(action)
             #print("reward = %s"%reward)
-        else:
-            pass
         return reward
 
     def _old_calculate_reward(self, action):

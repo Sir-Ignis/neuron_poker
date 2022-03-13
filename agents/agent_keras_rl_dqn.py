@@ -15,7 +15,7 @@ import random
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.callbacks import TensorBoard, Callback
-from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, Flatten
 from tensorflow.keras.optimizers import Adam
 
 from rl.policy import GreedyQPolicy
@@ -27,7 +27,7 @@ autoplay = True  # play automatically if played against keras-rl
 
 window_length = 1
 nb_max_start_steps = 1  # random action
-train_interval = 100  # train every 100 steps
+train_interval = 50  # train every n steps
 nb_steps_warmup = 500  # before training starts, should be higher than start steps
 nb_steps = 2000000
 memory_limit = nb_steps
@@ -35,6 +35,7 @@ batch_size = 512  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)    
+Q_VALUES = None # used so we can pass q values to processor
 
 FILE_PATH = '../trained/tmp/'
 FILE_PATH_2 = '../test/tmp/'
@@ -139,11 +140,10 @@ class Player:
         tf.compat.v1.disable_eager_execution()
 
         self.env = env
-
         nb_actions = self.env.action_space.n
-
+        input_shape = self.env.observation_space
         self.model = Sequential()
-        self.model.add(Dense(256, input_shape=env.observation_space))
+        self.model.add(Dense(256, input_shape=input_shape))
         self.model.add(LeakyReLU(alpha=0.4))
         self.model.add(Dropout(0.2))
         self.model.add(BatchNormalization())
@@ -154,16 +154,12 @@ class Player:
         self.model.add(Dense(256))
         self.model.add(LeakyReLU(alpha=0.3))
         self.model.add(Dropout(0.2))
-        self.model.add(BatchNormalization())
         self.model.add(Dense(nb_actions, activation='sigmoid'))
 
         # Finally, we configure and compile our agent. You can use every built-in Keras optimizer and
         # even the metrics!
         memory = SequentialMemory(limit=memory_limit, window_length=window_length)
         policy = TrumpPolicy()
-
-        nb_actions = env.action_space.n
-
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=nb_steps_warmup,
                             target_model_update=1e-2, policy=policy,
                             processor=CustomProcessor(),
@@ -289,6 +285,8 @@ class TrumpPolicy(GreedyQPolicy):
         # Returns
             Selection action
         """
+        global Q_VALUES
+        Q_VALUES = q_values.copy()
         assert q_values.ndim == 1
         action = np.argmax(q_values)
         log.info(f"Chosen action by keras-rl {action} - q values: {q_values}")
@@ -320,15 +318,11 @@ class CustomProcessor(Processor):
             self.legal_moves_limit = [move.value for move in self.legal_moves_limit]
             if action not in self.legal_moves_limit:
                 log.info('Action %s not in legal moves limit!'%action)
-                for i in range(5):
-                    action += i
-                    if action in self.legal_moves_limit:
-                        break
-                    action -= i * 2
-                    if action in self.legal_moves_limit:
-                        break
-                    action += i
-                if action not in self.legal_moves_limit:
-                    action = random.choice(self.legal_moves_limit)
+                global Q_VALUES
+                q_values = Q_VALUES.copy()
+                q_values = q_values.tolist()
+                while action not in self.legal_moves_limit:
+                    del q_values[action]
+                    action = np.argmax(q_values)
                 log.info('Choosen processed action: %s'%action)
         return action
