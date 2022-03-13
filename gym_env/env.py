@@ -155,6 +155,7 @@ class HoldemTable(Env):
         self.league_table = None
         self.games = 0
         self.hands = 0
+        self.game_steps = 0
         self.amount_won = 0
         self.observation = None
         self.reward = None
@@ -202,6 +203,7 @@ class HoldemTable(Env):
         # until either the env id sone, or an agent is just a shell and
         # and will get a call from to the step function externally (e.g. via
         # keras-rl
+        self.game_steps += 1
         self.reward = 0
         self.acting_agent = self.player_cycle.idx
         if self._agent_is_autoplay():
@@ -345,7 +347,8 @@ class HoldemTable(Env):
         elif action == Action.FOLD:
             reward = -self.player_pots[self.current_player.seat]-sum(np.minimum(self.player_max_win[1], self.player_max_win)) - self._contribution(action)
             #print("reward = %s"%reward)
-        return reward
+        #scale the reward using number of steps for given game
+        return (reward / self.game_steps)
 
     def _old_calculate_reward(self, action):
         """Reward function used by the original Neuron Poker"""
@@ -357,6 +360,13 @@ class HoldemTable(Env):
         elif len(self.funds_history) > 1:
             self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
                 -2, self.acting_agent]
+
+    def _game_over_reward(self):
+        # reward is total chips that can be won scaled by number of game steps
+        reward = (self.initial_stacks * len(self.players)) / self.game_steps
+        # dqn agent won if won = 1
+        won = 1 if self.winner_ix == 1 else -1
+        self.reward = reward * won
 
     def _contribution(self, action):
         """returns the contribution amount for a given action"""
@@ -543,6 +553,8 @@ class HoldemTable(Env):
         log.info("Game over.")
         self.games += 1
         self.bbg_data.append(self._calculate_bbg())
+        self._game_over_reward()
+        self.game_steps = 0
         self.done = True
         player_names = [f"{i} - {player.name}" for i, player in enumerate(self.players)]
         self.funds_history.columns = player_names
