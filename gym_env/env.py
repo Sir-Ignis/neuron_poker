@@ -152,6 +152,7 @@ class HoldemTable(Env):
         self.current_round_pot = 0
         self.player_pots = None  # individual player pots
 
+        self.league_table = None
         self.games = 0
         self.hands = 0
         self.amount_won = 0
@@ -168,7 +169,6 @@ class HoldemTable(Env):
 
     def reset(self):
         """Reset after game over."""
-        self.games += 1
         self.observation = None
         self.reward = None
         self.info = None
@@ -225,7 +225,7 @@ class HoldemTable(Env):
                     self._execute_step(Action(action))
                     if self.first_action_for_hand[self.acting_agent] or self.done:
                         self.first_action_for_hand[self.acting_agent] = False
-                        self._old_calculate_reward(action)
+                        # we don't calculate the reward for the other agent
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
@@ -233,13 +233,13 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 #using old reward function
+                """
                 self._execute_step(Action(action))
                 if self.first_action_for_hand[self.acting_agent] or self.done:
                     self.first_action_for_hand[self.acting_agent] = False
                     self._old_calculate_reward(action)
                 """
                 # using improved reward function
-                self.player_data = PlayerData()
                 self.player_data.position = self.current_player.seat
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
@@ -249,7 +249,7 @@ class HoldemTable(Env):
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 self.reward = reward
-                """
+                
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
@@ -543,6 +543,7 @@ class HoldemTable(Env):
     def _game_over(self):
         """End of an episode."""
         log.info("Game over.")
+        self.games += 1
         self.bbg_data.append(self._calculate_bbg())
         self.done = True
         player_names = [f"{i} - {player.name}" for i, player in enumerate(self.players)]
@@ -553,9 +554,9 @@ class HoldemTable(Env):
         plt.show()
 
         winner_in_episodes.append(self.winner_ix)
-        league_table = pd.Series(winner_in_episodes).value_counts()
-        best_player = league_table.index[0]
-        log.info(league_table)
+        self.league_table  = pd.Series(winner_in_episodes).value_counts()
+        best_player = self.league_table.index[0]
+        log.info(self.league_table)
         log.info(f"Best Player: {best_player}")
 
     def _initiate_round(self):

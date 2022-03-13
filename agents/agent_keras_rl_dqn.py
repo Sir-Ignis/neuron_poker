@@ -29,15 +29,18 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 500  # before training starts, should be higher than start steps
-nb_steps = 600000
-memory_limit = int(nb_steps / 2)
-batch_size = 256  # items sampled from memory to train
+nb_steps = 2000000
+memory_limit = nb_steps
+batch_size = 512  # items sampled from memory to train
 enable_double_dqn = False
 
 log = logging.getLogger(__name__)    
 
 FILE_PATH = '../trained/tmp/'
 FILE_PATH_2 = '../test/tmp/'
+
+metrics_episodes_interval = 10 # write metrics to file every n episodes
+checkpoint_steps_interval = 1000 # save checkpoints of model weights every n steps
 
 class ModelCheckpoint(ModelIntervalCheckpoint):
     def __init__(self, filepath, interval, verbose=0):
@@ -58,7 +61,7 @@ class ModelCheckpoint(ModelIntervalCheckpoint):
         if self.verbose > 0:
             log.info('Step {}: saving model weights to {}'.format(
                 self.total_steps, filepath))
-        self.model.model.save_weights(self.filepath)
+        self.model.save_weights(self.filepath,overwrite=True)
 
 
 def plot_metrics(metrics_file_path):
@@ -180,10 +183,10 @@ class Player:
         timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str(env_name)
         
         log_dir = FILE_PATH+"metrics_{}".format(timestr)
-        metrics = FileLogger(filepath=log_dir, interval=10)
+        metrics = FileLogger(filepath=log_dir, interval=metrics_episodes_interval)
 
         ckpt_dir = FILE_PATH+"{}/ckpt".format(timestr)
-        interval_checkpoints = ModelCheckpoint(filepath=ckpt_dir,interval=1000)
+        interval_checkpoints = ModelCheckpoint(filepath=ckpt_dir,interval=checkpoint_steps_interval)
         
         self.dqn.fit(self.env, nb_max_start_steps=nb_max_start_steps, nb_steps=steps, visualize=False, verbose=2,
                      start_step_policy=self.start_step_policy, callbacks=[metrics, interval_checkpoints])
@@ -199,16 +202,21 @@ class Player:
         weights_dir = FILE_PATH+'dqn_{}_weights.h5'.format(env_name)
         self.dqn.save_weights(weights_dir, overwrite=True)
         
+        league_table = self.env.league_table
         bbg = self.env.bbg_data
         games = self.env.games
         hands = self.env.hands
-        if(games == 0):
-            print('Error: no games were completed!')
+        if(games < 2):
+            print('Error: Less than 2 games were completed!')
         else:
+            if (league_table is not None) and (league_table.size == 2):
+                # games won and lost by the agent (assumes agent is at index 1)
+                print('Games Won: '+str(league_table[1]))
+                print("Games Lost: "+str(league_table[0]))
             plot_metrics(log_dir)
             plot_cumulative_bb(bbg)
             wr = win_rate(hands, bbg)
-            print('Win rate (bb/100) = %s'%wr)
+            print('Win rate (bb/h) = %s'%wr)
         
 
     def load(self, env_name):
@@ -294,10 +302,11 @@ class CustomProcessor(Processor):
         """initizlie properties"""
         self.legal_moves_limit = None
 
+    
     def process_state_batch(self, batch):
         """Remove second dimension to make it possible to pass it into cnn"""
         return np.squeeze(batch, axis=1)
-
+    
     def process_info(self, info):
         if 'legal_moves' in info.keys():
             self.legal_moves_limit = info['legal_moves']

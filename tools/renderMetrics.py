@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-metrics_file_path = '../../trained/DQNWE_256_600000/metrics_20220214-101316_dqn1'
+metrics_file_path = '../../trained/equity_50_70_10000_steps/metrics_20220312-123543_dqn1'
 def plot_loss_and_accuracy(metrics_file_path):
     d = pd.read_json(metrics_file_path)
     l = pd.DataFrame(d['loss'])

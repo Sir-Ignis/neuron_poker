@@ -12,11 +12,13 @@ Usage:
   main.py selfplay dqn_train_2 [options]
   main.py selfplay dqn_play_2 [options]
   main.py selfplay dqn_play_human [options]
+  main.py selfplay dqn_train_3 [options]
 
 options:
   -h --help                 Show this screen.
   -r --render               render screen
   -c --use_cpp_montecarlo   use cpp implementation of equity calculator. Requires cpp compiler but is 500x faster
+  --cons_equity=<>          if true then uses 50/70 equity agent otherwise uses 20/30 equity agent for dqn_train_3
   -f --funds_plot           Plot funds at end of episode
   --log                     log file
   --name=<>                 Name of the saved model
@@ -24,7 +26,6 @@ options:
   --episodes=<>             number of episodes to play
   --steps=<>                number of steps to train for
   --stack=<>                starting stack for each player [default: 500].
-
 """
 
 import logging
@@ -93,6 +94,14 @@ def command_line_parser():
 
         elif args['dqn_play_human']:
             runner.dqn_play_human_keras_rl(model_name, nb_steps)
+
+        elif args['dqn_train_3']:
+            conservative = args["--cons_equity"]
+            if conservative == 'True' or conservative == 'true':
+              runner.dqn_train_3_keras_rl(model_name, nb_steps, True)   
+            else:
+              runner.dqn_train_3_keras_rl(model_name, nb_steps, False)
+            
     else:
         raise RuntimeError("Argument not yet implemented")
 
@@ -311,6 +320,29 @@ class SelfPlay:
         dqn = DQNPlayer(load_model=model_name, env=self.env)
         dqn.play(env_name=model_name, nb_steps=nb_steps, render=self.render)
 
+
+
+    def dqn_train_3_keras_rl(self, model_name, nb_steps, conservative):
+        """Create 2 players, one of them uses DQN and the other is a equity player"""
+        from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.agent_consider_equity import Player as EquityPlayer
+        env_name = 'neuron_poker-v0'
+        env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
+                        use_cpp_montecarlo=self.use_cpp_montecarlo)
+        np.random.seed(123)
+        env.seed(123)
+        if not(conservative):
+            env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=-.3))
+        else:
+            env.add_player(EquityPlayer(name='equity/50/70', min_call_equity=.5, min_bet_equity=-.7))
+        
+        env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack)) # shell is used for callback to keras rl
+
+        env.reset()
+
+        dqn = DQNPlayer()
+        dqn.initiate_agent(env)
+        dqn.train(env_name=model_name, steps=nb_steps)
 
 if __name__ == '__main__':
     command_line_parser()

@@ -26,10 +26,12 @@ class Player:
         incremen1 = .1
         increment2 = .2
 
+        # remove all in to reduce variance
+        """
         if equity_alive > self.min_bet_equity + increment2 and Action.ALL_IN in action_space:
             action = Action.ALL_IN
-
-        elif equity_alive > self.min_bet_equity + incremen1 and Action.RAISE_2POT in action_space:
+        """
+        if equity_alive > self.min_bet_equity + incremen1 and Action.RAISE_2POT in action_space:
             action = Action.RAISE_2POT
 
         elif equity_alive > self.min_bet_equity and Action.RAISE_POT in action_space:
