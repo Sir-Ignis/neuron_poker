@@ -333,25 +333,21 @@ class HoldemTable(Env):
         reward = 0
         if not(action == Action.FOLD):
             # reward = expected value weighted against number of table cards
+            # expected value = win_amount+loss_amount
             # contribution = amount keras-rl contributed to the pot
             contribution = self._contribution(action)
-
-            #print("equity = %f"%self.player_data.equity_to_river_alive)
-            total_winnings = sum(np.minimum(self.player_max_win[1], self.player_max_win)) + contribution
-            #print('max win = %s'%total_winnings)
-            win_amount = self.player_data.equity_to_river_alive * total_winnings
-            #print("win %s"%win_amount)
-            loss_amount = (1 - self.player_data.equity_to_river_alive) * (contribution+self.player_pots[self.current_player.seat])
-            #print("loss %s"%loss_amount)
-            expected_value = win_amount - loss_amount 
-            #print("expected value = %s"%(expected_value))
+            pot = sum(np.minimum(self.player_max_win[1], self.player_max_win))
+            expected_value = 0
+            win_percentage = self.player_data.equity_to_river_alive
+            if(action == Action.CALL):
+                # win_amount = win_percentage*pot
+                # loss_amount = (1-win_percentage)*pot
+                expected_value = win_percentage*pot + ((1-win_percentage)*-pot)
+            else: # action is a bet
+                # win_amount = win_percentage*pot
+                # loss_amount = (1-win_percentage)*contribution
+                expected_value = win_percentage*pot + ((1-win_percentage)*-contribution)
             reward = expected_value 
-            #print("reward = %s"%reward)
-        elif action == Action.FOLD:
-            reward = -self.player_pots[self.current_player.seat]-sum(np.minimum(self.player_max_win[1], self.player_max_win)) - self._contribution(action)
-            #print("reward = %s"%reward)
-        #scale the reward using number of steps for given game
-        reward /= self.game_steps
         return reward
 
 
