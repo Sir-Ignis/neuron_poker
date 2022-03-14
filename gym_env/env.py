@@ -227,10 +227,12 @@ class HoldemTable(Env):
                     self._execute_step(Action(action))
                     if self.first_action_for_hand[self.acting_agent] or self.done:
                         self.first_action_for_hand[self.acting_agent] = False
+                        """
                         if self.done:
                             self.reward = self._game_over_reward()
                             print("reward: "+str(self.reward))
                             self.game_steps = 0
+                        """
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
@@ -349,9 +351,7 @@ class HoldemTable(Env):
             reward = -self.player_pots[self.current_player.seat]-sum(np.minimum(self.player_max_win[1], self.player_max_win)) - self._contribution(action)
             #print("reward = %s"%reward)
         #scale the reward using number of steps for given game
-        #dont scale folding to heavily penalise folding
-        if not(action == Action.FOLD):
-            reward /= self.game_steps
+        reward /= self.game_steps
         return reward
 
 
