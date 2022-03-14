@@ -331,7 +331,7 @@ class HoldemTable(Env):
     def _calculate_reward(self, action):
         """Reward function for agent"""
         reward = 0
-        if not(action == Action.FOLD):
+        if not(action == Action.FOLD) and not(action == CHECK):
             # reward = expected value weighted against number of table cards
             # expected value = win_amount+loss_amount
             # contribution = amount keras-rl contributed to the pot
@@ -348,6 +348,7 @@ class HoldemTable(Env):
                 # loss_amount = (1-win_percentage)*contribution
                 expected_value = win_percentage*pot + ((1-win_percentage)*-contribution)
             reward = expected_value 
+        # both folding and checking having an expected value of 0
         return reward
 
 
