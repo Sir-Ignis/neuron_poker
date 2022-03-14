@@ -227,7 +227,10 @@ class HoldemTable(Env):
                     self._execute_step(Action(action))
                     if self.first_action_for_hand[self.acting_agent] or self.done:
                         self.first_action_for_hand[self.acting_agent] = False
-                        # we don't calculate the reward for the other agent
+                        if self.done:
+                            self.reward = self._game_over_reward()
+                            print("reward: "+str(self.reward))
+                            self.game_steps = 0
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
@@ -247,11 +250,9 @@ class HoldemTable(Env):
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
                 reward = self._calculate_reward(Action(action))
-                self.prev_stack_size = self.players[self.current_player.seat].stack
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 self.reward = reward
-                
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
@@ -348,7 +349,11 @@ class HoldemTable(Env):
             reward = -self.player_pots[self.current_player.seat]-sum(np.minimum(self.player_max_win[1], self.player_max_win)) - self._contribution(action)
             #print("reward = %s"%reward)
         #scale the reward using number of steps for given game
-        return (reward / self.game_steps)
+        #dont scale folding to heavily penalise folding
+        if not(action == Action.FOLD):
+            reward /= self.game_steps
+        return reward
+
 
     def _old_calculate_reward(self, action):
         """Reward function used by the original Neuron Poker"""
@@ -362,11 +367,14 @@ class HoldemTable(Env):
                 -2, self.acting_agent]
 
     def _game_over_reward(self):
-        # reward is total chips that can be won scaled by number of game steps
-        reward = (self.initial_stacks * len(self.players)) / self.game_steps
+        # reward is total chips that can be won scaled by value of bb and #steps
+        reward = (self.initial_stacks * len(self.players)) / (self.big_blind*self.game_steps)
         # dqn agent won if won = 1
+        # otherwise if lost get rid of scaling to heavily penalise loss
+        print("Winner: "+str(self.winner_ix))
         won = 1 if self.winner_ix == 1 else -1
-        self.reward = reward * won
+        reward = reward * won
+        return reward
 
     def _contribution(self, action):
         """returns the contribution amount for a given action"""
@@ -553,8 +561,6 @@ class HoldemTable(Env):
         log.info("Game over.")
         self.games += 1
         self.bbg_data.append(self._calculate_bbg())
-        self._game_over_reward()
-        self.game_steps = 0
         self.done = True
         player_names = [f"{i} - {player.name}" for i, player in enumerate(self.players)]
         self.funds_history.columns = player_names

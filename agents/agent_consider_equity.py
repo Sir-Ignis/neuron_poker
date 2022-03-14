@@ -1,4 +1,4 @@
-"""Random player"""
+"""Equity player"""
 
 from gym_env.env import Action
 
@@ -8,7 +8,7 @@ autoplay = True  # play automatically if played against keras-rl
 class Player:
     """Mandatory class with the player methods"""
 
-    def __init__(self, name='Random', min_call_equity=None, min_bet_equity=None):
+    def __init__(self, name='Equity', min_call_equity=None, min_bet_equity=None):
         """Initiaization of an agent"""
         self.equity_alive = 0
         self.name = name

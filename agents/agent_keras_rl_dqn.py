@@ -27,7 +27,7 @@ autoplay = True  # play automatically if played against keras-rl
 
 window_length = 1
 nb_max_start_steps = 1  # random action
-train_interval = 50  # train every n steps
+train_interval = 4  # train every n steps
 nb_steps_warmup = 500  # before training starts, should be higher than start steps
 nb_steps = 2000000
 memory_limit = nb_steps
