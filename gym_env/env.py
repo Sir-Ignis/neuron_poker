@@ -212,7 +212,7 @@ class HoldemTable(Env):
         self.acting_agent = self.player_cycle.idx
         if self._agent_is_autoplay():
             while self._agent_is_autoplay() and not self.done:
-                log.debug("Autoplay agent. Call action method of agent.")
+                log.info("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
                 if self.render_switch:
@@ -232,17 +232,18 @@ class HoldemTable(Env):
                 else:
                     self._execute_step(Action(action))
                     if(self.hand_ended):
-                        log.info(f"Previous total reward for hand: {self.total_reward_for_hand}")
-                        self.reward = self._calculate_end_of_hand_reward()
-                        if self.reward < 0:
-                            log.info(f"Previous end of hand reward: {self.reward}")
-                        if(self.done):
+                        if not(self.done):
+                            hand_reward = self._calculate_end_of_hand_reward()
+                            log.info(f"End of hand reward: {hand_reward}")
+                            self.total_reward_for_game += hand_reward
+                        else:
                             game_end_reward = self._calculate_end_of_game_reward()
                             self.reward += game_end_reward
-                            log.info(f"Previous end of game reward: {game_end_reward}")
-
+                            log.info(f"End of game reward: {game_end_reward}")
+                print("End of equity agent turn")
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
+            print("Start keras agent turn")
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
@@ -257,16 +258,15 @@ class HoldemTable(Env):
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 if(self.hand_ended):
-                    log.info(f"Previous total reward for hand: {self.total_reward_for_hand}")
-                    hand_reward = self._calculate_end_of_hand_reward()
-                    if hand_reward < 0:
-                        self.reward += hand_reward
-                        log.info(f"Previous end of hand reward: {self.reward}")
+                    if not(self.done):
+                        hand_reward = self._calculate_end_of_hand_reward()
+                        log.info(f"End of hand reward: {hand_reward}")
+                        self.total_reward_for_game += hand_reward
                     if(self.done):
                         game_end_reward = self._calculate_end_of_game_reward()
                         self.reward += game_end_reward
-                        log.info(f"Previous end of game reward: {game_end_reward}")
-            log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+                        log.info(f"End of game reward: {game_end_reward}")
+            print("End of keras agent turn")
         if not self.done:
             self.total_reward_for_game += self.reward
         return self.array_everything, self.reward, self.done, self.info
@@ -363,15 +363,15 @@ class HoldemTable(Env):
             reward = expected_value 
         # folding forfeits the pot
         else:
-            reward = -pot 
+            reward = -pot
         return reward
 
     def _calculate_end_of_hand_reward(self):
         """ returns the end of hand reward """
         reward = self.total_reward_for_hand
-        if not(self.dqn_won_hand) and self.total_reward_for_hand > 0:
+        if (not(self.dqn_won_hand) and self.total_reward_for_hand > 0) \
+        or (self.dqn_won_hand and self.total_reward_for_hand < 0):
             reward *= -1
-        # else no additional reward required since we won the hand
         # reset variables
         self.hand_ended = False
         self.total_reward_for_hand = 0
@@ -390,11 +390,11 @@ class HoldemTable(Env):
 
     def _calculate_end_of_game_reward(self):
         old_reward = self.total_reward_for_game 
-        print(f"Total (old) reward for game: {old_reward}")
+        print(f"(old) reward for game: {old_reward}")
         scaled_reward = old_reward / self.game_steps
-        # we replace the accumulated reward for the game by the scaled accumulated reward
-        new_reward = -old_reward + scaled_reward
-
+        new_reward = scaled_reward
+        if (self.winner_ix == 1 and scaled_reward < 0) or (not(self.winner_ix == 1) and scaled_reward > 0):
+            new_reward *= -1
         # reset vars
         self.game_steps = 0
         self.total_reward_for_game = 0

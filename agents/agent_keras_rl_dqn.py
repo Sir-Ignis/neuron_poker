@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import TensorBoard, Callback
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, Flatten
 from tensorflow.keras.optimizers import Adam
 
-from rl.policy import GreedyQPolicy
+from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.agents import DQNAgent
 from rl.core import Processor
@@ -28,7 +28,7 @@ autoplay = True  # play automatically if played against keras-rl
 window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 4  # train every n steps
-nb_steps_warmup = 500  # before training starts, should be higher than start steps
+nb_steps_warmup = 1000  # before training starts, should be higher than start steps
 nb_steps = 2000000
 memory_limit = nb_steps
 batch_size = 512  # items sampled from memory to train
@@ -273,23 +273,29 @@ class Player:
 
 # replaced old policy
 # see https://github.com/dickreuter/neuron_poker/blob/master/agents/agent_keras_rl_dqn.py#L168 for old policy
-class TrumpPolicy(GreedyQPolicy):
+class TrumpPolicy(EpsGreedyQPolicy):
     """Custom policy when making decision based on neural network."""
 
+    def __init__(self, eps=.1):
+        super(EpsGreedyQPolicy, self).__init__()
+        self.eps = eps
+        self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploration
     def select_action(self, q_values):
         """Return the selected action
-
         # Arguments
             q_values (np.ndarray): List of the estimations of Q for each action
-
         # Returns
             Selection action
         """
         global Q_VALUES
         Q_VALUES = q_values.copy()
         assert q_values.ndim == 1
-        action = np.argmax(q_values)
-        log.info(f"Chosen action by keras-rl {action} - q values: {q_values}")
+        nb_actions = q_values.shape[0]
+            
+        if np.random.uniform() < self.eps or self.agent.step < nb_steps_warmup:
+            action = np.random.randint(0, nb_actions)
+        else:
+            action = np.argmax(q_values)
         return action
 
    
