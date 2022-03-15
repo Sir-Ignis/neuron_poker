@@ -152,6 +152,7 @@ class HoldemTable(Env):
         self.current_round_pot = 0
         self.player_pots = None  # individual player pots
 
+        self.total_reward_for_game = 0
         self.hand_ended = False
         self.dqn_won_hand = False
         self.total_reward_for_hand = 0
@@ -226,6 +227,8 @@ class HoldemTable(Env):
                 action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
+                    # we don't want to give a reward for illegal actions done by the other agent
+                    self.reward = 0
                 else:
                     self._execute_step(Action(action))
                     if(self.hand_ended):
@@ -233,6 +236,10 @@ class HoldemTable(Env):
                         self.reward = self._calculate_end_of_hand_reward()
                         if self.reward < 0:
                             log.info(f"Previous end of hand reward: {self.reward}")
+                        if(self.done):
+                            game_end_reward = self._calculate_end_of_game_reward()
+                            self.reward += game_end_reward
+                            log.info(f"Previous end of game reward: {game_end_reward}")
 
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
@@ -245,18 +252,23 @@ class HoldemTable(Env):
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
-                reward = self._calculate_reward(Action(action))
+                reward = self._calculate_expected_reward(Action(action))
                 self.total_reward_for_hand += reward
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
-                self.reward = reward
                 if(self.hand_ended):
                     log.info(f"Previous total reward for hand: {self.total_reward_for_hand}")
                     hand_reward = self._calculate_end_of_hand_reward()
                     if hand_reward < 0:
                         self.reward += hand_reward
                         log.info(f"Previous end of hand reward: {self.reward}")
+                    if(self.done):
+                        game_end_reward = self._calculate_end_of_game_reward()
+                        self.reward += game_end_reward
+                        log.info(f"Previous end of game reward: {game_end_reward}")
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+        if not self.done:
+            self.total_reward_for_game += self.reward
         return self.array_everything, self.reward, self.done, self.info
 
     def _execute_step(self, action):
@@ -329,8 +341,8 @@ class HoldemTable(Env):
         if self.render_switch:
             self.render()
 
-    def _calculate_reward(self, action):
-        """Reward function for agent"""
+    def _calculate_expected_reward(self, action):
+        """returns the expected reward for a given action (expected value)"""
         reward = 0
         pot = sum(np.minimum(self.player_max_win[1], self.player_max_win))
         if not(action == Action.FOLD):
@@ -356,9 +368,9 @@ class HoldemTable(Env):
 
     def _calculate_end_of_hand_reward(self):
         """ returns the end of hand reward """
-        reward = 0
+        reward = self.total_reward_for_hand
         if not(self.dqn_won_hand) and self.total_reward_for_hand > 0:
-            reward = -self.total_reward_for_hand     
+            reward *= -1
         # else no additional reward required since we won the hand
         # reset variables
         self.hand_ended = False
@@ -376,15 +388,17 @@ class HoldemTable(Env):
             self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
                 -2, self.acting_agent]
 
-    def _game_over_reward(self):
-        # reward is total chips that can be won scaled by value of bb and #steps
-        reward = (self.initial_stacks * len(self.players)) / (self.big_blind*self.game_steps)
-        # dqn agent won if won = 1
-        # otherwise if lost get rid of scaling to heavily penalise loss
-        print("Winner: "+str(self.winner_ix))
-        won = 1 if self.winner_ix == 1 else -1
-        reward = reward * won
-        return reward
+    def _calculate_end_of_game_reward(self):
+        old_reward = self.total_reward_for_game 
+        print(f"Total (old) reward for game: {old_reward}")
+        scaled_reward = old_reward / self.game_steps
+        # we replace the accumulated reward for the game by the scaled accumulated reward
+        new_reward = -old_reward + scaled_reward
+
+        # reset vars
+        self.game_steps = 0
+        self.total_reward_for_game = 0
+        return new_reward
 
     def _contribution(self, action):
         """returns the contribution amount for a given action"""
