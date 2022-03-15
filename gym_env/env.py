@@ -152,6 +152,9 @@ class HoldemTable(Env):
         self.current_round_pot = 0
         self.player_pots = None  # individual player pots
 
+        self.hand_ended = False
+        self.dqn_won_hand = False
+        self.total_reward_for_hand = 0
         self.league_table = None
         self.games = 0
         self.hands = 0
@@ -225,36 +228,34 @@ class HoldemTable(Env):
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        """
-                        if self.done:
-                            self.reward = self._game_over_reward()
-                            print("reward: "+str(self.reward))
-                            self.game_steps = 0
-                        """
+                    if(self.hand_ended):
+                        log.info(f"Previous total reward for hand: {self.total_reward_for_hand}")
+                        self.reward = self._calculate_end_of_hand_reward()
+                        if self.reward < 0:
+                            log.info(f"Previous end of hand reward: {self.reward}")
+
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
-                #using old reward function
-                """
-                self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._old_calculate_reward(action)
-                """
                 # using improved reward function
                 self.player_data.position = self.current_player.seat
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
                 reward = self._calculate_reward(Action(action))
+                self.total_reward_for_hand += reward
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 self.reward = reward
+                if(self.hand_ended):
+                    log.info(f"Previous total reward for hand: {self.total_reward_for_hand}")
+                    hand_reward = self._calculate_end_of_hand_reward()
+                    if hand_reward < 0:
+                        self.reward += hand_reward
+                        log.info(f"Previous end of hand reward: {self.reward}")
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
@@ -353,6 +354,16 @@ class HoldemTable(Env):
             reward = -pot 
         return reward
 
+    def _calculate_end_of_hand_reward(self):
+        """ returns the end of hand reward """
+        reward = 0
+        if not(self.dqn_won_hand) and self.total_reward_for_hand > 0:
+            reward = -self.total_reward_for_hand     
+        # else no additional reward required since we won the hand
+        # reset variables
+        self.hand_ended = False
+        self.total_reward_for_hand = 0
+        return reward
 
     def _old_calculate_reward(self, action):
         """Reward function used by the original Neuron Poker"""
@@ -647,8 +658,10 @@ class HoldemTable(Env):
         self.player_pots = [0] * len(self.players)
 
     def _end_hand(self):
+        self.hand_ended = True
         self._clean_up_pots()
         self.winner_ix = self._get_winner()
+        self.dqn_won_hand = True if self.winner_ix == 1 else False
         self._award_winner(self.winner_ix)
         self.hands += 1
 
