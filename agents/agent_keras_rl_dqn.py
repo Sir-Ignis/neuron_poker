@@ -276,7 +276,7 @@ class Player:
 class TrumpPolicy(EpsGreedyQPolicy):
     """Custom policy when making decision based on neural network."""
 
-    def __init__(self, eps=.1):
+    def __init__(self, eps=0.05):
         super(EpsGreedyQPolicy, self).__init__()
         self.eps = eps
         self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploration
@@ -291,7 +291,7 @@ class TrumpPolicy(EpsGreedyQPolicy):
         Q_VALUES = q_values.copy()
         assert q_values.ndim == 1
         nb_actions = q_values.shape[0]
-            
+        
         if np.random.uniform() < self.eps or self.agent.step < nb_steps_warmup:
             action = np.random.randint(0, nb_actions)
         else:

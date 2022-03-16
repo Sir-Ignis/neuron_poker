@@ -212,7 +212,7 @@ class HoldemTable(Env):
         self.acting_agent = self.player_cycle.idx
         if self._agent_is_autoplay():
             while self._agent_is_autoplay() and not self.done:
-                log.info("Autoplay agent. Call action method of agent.")
+                log.debug("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
                 if self.render_switch:
@@ -235,8 +235,8 @@ class HoldemTable(Env):
                         if not(self.done):
                             hand_reward = self._calculate_end_of_hand_reward()
                             log.info(f"End of hand reward: {hand_reward}")
-                            self.total_reward_for_game += hand_reward
-                        else:
+                            self.reward += hand_reward
+                        if(self.done):
                             game_end_reward = self._calculate_end_of_game_reward()
                             self.reward += game_end_reward
                             log.info(f"End of game reward: {game_end_reward}")
@@ -261,7 +261,7 @@ class HoldemTable(Env):
                     if not(self.done):
                         hand_reward = self._calculate_end_of_hand_reward()
                         log.info(f"End of hand reward: {hand_reward}")
-                        self.total_reward_for_game += hand_reward
+                        self.reward += hand_reward
                     if(self.done):
                         game_end_reward = self._calculate_end_of_game_reward()
                         self.reward += game_end_reward
@@ -369,9 +369,11 @@ class HoldemTable(Env):
     def _calculate_end_of_hand_reward(self):
         """ returns the end of hand reward """
         reward = self.total_reward_for_hand
+        """
         if (not(self.dqn_won_hand) and self.total_reward_for_hand > 0) \
         or (self.dqn_won_hand and self.total_reward_for_hand < 0):
             reward *= -1
+        """
         # reset variables
         self.hand_ended = False
         self.total_reward_for_hand = 0
@@ -392,9 +394,11 @@ class HoldemTable(Env):
         old_reward = self.total_reward_for_game 
         print(f"(old) reward for game: {old_reward}")
         scaled_reward = old_reward / self.game_steps
-        new_reward = scaled_reward
+        new_reward = -old_reward+scaled_reward
+        """
         if (self.winner_ix == 1 and scaled_reward < 0) or (not(self.winner_ix == 1) and scaled_reward > 0):
             new_reward *= -1
+        """
         # reset vars
         self.game_steps = 0
         self.total_reward_for_game = 0
