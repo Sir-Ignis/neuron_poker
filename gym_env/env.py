@@ -232,11 +232,12 @@ class HoldemTable(Env):
                 else:
                     self._execute_step(Action(action))
                     if(self.hand_ended):
+                        hand_reward = self._calculate_end_of_hand_reward()
+                        log.info(f"End of hand reward: {hand_reward}")
                         if not(self.done):
-                            hand_reward = self._calculate_end_of_hand_reward()
-                            log.info(f"End of hand reward: {hand_reward}")
                             self.reward += hand_reward
                         if(self.done):
+                            self.total_reward_for_game += hand_reward
                             game_end_reward = self._calculate_end_of_game_reward()
                             self.reward += game_end_reward
                             log.info(f"End of game reward: {game_end_reward}")
@@ -259,11 +260,12 @@ class HoldemTable(Env):
                 self.total_reward_for_hand += self._calculate_action_reward(action_reward)
                 self.last_action = Action(action)
                 if(self.hand_ended):
+                    hand_reward = self._calculate_end_of_hand_reward()
+                    log.info(f"End of hand reward: {hand_reward}")
                     if not(self.done):
-                        hand_reward = self._calculate_end_of_hand_reward()
-                        log.info(f"End of hand reward: {hand_reward}")
                         self.reward += hand_reward
                     if(self.done):
+                        self.total_reward_for_game += hand_reward
                         game_end_reward = self._calculate_end_of_game_reward()
                         self.reward += game_end_reward
                         log.info(f"End of game reward: {game_end_reward}")
@@ -379,11 +381,14 @@ class HoldemTable(Env):
         """ returns the end of hand reward """
         reward = self.total_reward_for_hand
         
-        if (not(self.dqn_won_hand) and self.total_reward_for_hand > 0) \
-        or (self.dqn_won_hand and self.total_reward_for_hand < 0):
+        if int(reward) == 0:
+            reward = self.amount_won
+        if (not(self.dqn_won_hand) and reward > 0) \
+        or (self.dqn_won_hand and reward < 0):
             reward *= -1
 
         # reset variables
+        self.amount_won = 0
         self.hand_ended = False
         self.total_reward_for_hand = 0
         return reward
@@ -400,21 +405,21 @@ class HoldemTable(Env):
                 -2, self.acting_agent]
 
     def _calculate_end_of_game_reward(self):
+        NB_CHANCE = 20 # if n < number of chance steps then won/lost by chance
         old_reward = self.total_reward_for_game 
         print(f"(old) reward for game: {old_reward}")
         new_reward = old_reward
-        
-        if (self.game_steps >= 40):
+
+        if (self.game_steps >= NB_CHANCE):
             invert_sign = (self.winner_ix == 1 and old_reward < 0) or (not(self.winner_ix == 1) and old_reward > 0)
             _ = old_reward*10
             scaled_reward = _ if not invert_sign and _ < 1000 and _ > -1000 else old_reward
             new_reward = scaled_reward
-            _ = old_reward + (new_reward*-2)
             if invert_sign:
-                new_reward *= -2 if _ < 1000 and _ > -1000 else -1
+                new_reward *= -2
 
         # win/loss likely due to chance so episode reward should be 0
-        elif (self.game_steps < 40) and not(int(new_reward + old_reward) == 0):
+        elif (self.game_steps < NB_CHANCE) and not(int(new_reward + old_reward) == 0):
             new_reward = -old_reward
 
         # reset vars
@@ -544,8 +549,7 @@ class HoldemTable(Env):
         return nbb_won
 
     def _start_new_hand(self):
-        """Deal new cards to players and reset table states."""
-        self.amount_won += self.players[1].stack 
+        """Deal new cards to players and reset table states.""" 
         self._save_funds_history()
 
         if self._check_game_over():
@@ -725,6 +729,7 @@ class HoldemTable(Env):
         max_win_per_player_for_winner = self.player_max_win[winner_ix]
         total_winnings = sum(np.minimum(max_win_per_player_for_winner, self.player_max_win))
         log.info('Total winnings = %s'%total_winnings)
+        self.amount_won = total_winnings
         remains = np.maximum(0, np.array(self.player_max_win) - max_win_per_player_for_winner)  # to be returned
 
         self.players[winner_ix].stack += total_winnings

@@ -27,7 +27,7 @@ autoplay = True  # play automatically if played against keras-rl
 
 window_length = 1
 nb_max_start_steps = 1  # random action
-train_interval = 4  # train every n steps
+train_interval = 4 # train every n steps
 nb_steps_warmup = 1000  # before training starts, should be higher than start steps
 nb_steps = 2000000
 memory_limit = nb_steps
@@ -274,12 +274,12 @@ class Player:
 # replaced old policy
 # see https://github.com/dickreuter/neuron_poker/blob/master/agents/agent_keras_rl_dqn.py#L168 for old policy
 class TrumpPolicy(EpsGreedyQPolicy):
-    """Custom policy when making decision based on neural network."""
+    """Adaptive EpsGreedyQPolicy when making decision based on neural network."""
 
-    def __init__(self, eps=0.05):
+    def __init__(self, eps=0.1):
         super(EpsGreedyQPolicy, self).__init__()
         self.eps = eps
-        self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploration
+        self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploitation
     def select_action(self, q_values):
         """Return the selected action
         # Arguments
@@ -305,7 +305,7 @@ class CustomProcessor(Processor):
     def __init__(self):
         """initizlie properties"""
         self.legal_moves_limit = None
-
+        self.eps = 0.1
     
     def process_state_batch(self, batch):
         """Remove second dimension to make it possible to pass it into cnn"""
@@ -319,7 +319,7 @@ class CustomProcessor(Processor):
         return {'x': 1}  # on arrays allowed it seems
 
     def process_action(self, action):
-        """Find nearest legal action"""
+        """Selects legal action using epsilon greedy policy"""
         if 'legal_moves_limit' in self.__dict__ and self.legal_moves_limit is not None:
             self.legal_moves_limit = [move.value for move in self.legal_moves_limit]
             if action not in self.legal_moves_limit:
@@ -329,6 +329,9 @@ class CustomProcessor(Processor):
                 q_values = q_values.tolist()
                 while action not in self.legal_moves_limit:
                     del q_values[action]
-                    action = np.argmax(q_values)
+                    if np.random.uniform() < self.eps:
+                        action = np.random.randint(0, len(q_values))
+                    else:
+                        action = np.argmax(q_values)
                 log.info('Choosen processed action: %s'%action)
         return action
