@@ -253,9 +253,10 @@ class HoldemTable(Env):
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
-                reward = self._calculate_expected_reward(Action(action))
-                self.total_reward_for_hand += reward
+                action_reward = self._calculate_expected_reward(Action(action))
+                self.total_reward_for_hand += action_reward
                 self._execute_step(Action(action))
+                self.total_reward_for_hand += self._calculate_action_reward(action_reward)
                 self.last_action = Action(action)
                 if(self.hand_ended):
                     if not(self.done):
@@ -366,14 +367,22 @@ class HoldemTable(Env):
             reward = -pot
         return reward
 
+    def _calculate_action_reward(self, expected_action_reward):
+        action_reward = 0
+        if not(self.hand_ended) and (expected_action_reward < 0):
+            action_reward = -expected_action_reward
+        return action_reward
+
+
+
     def _calculate_end_of_hand_reward(self):
         """ returns the end of hand reward """
         reward = self.total_reward_for_hand
-        """
+        
         if (not(self.dqn_won_hand) and self.total_reward_for_hand > 0) \
         or (self.dqn_won_hand and self.total_reward_for_hand < 0):
             reward *= -1
-        """
+
         # reset variables
         self.hand_ended = False
         self.total_reward_for_hand = 0
@@ -393,12 +402,21 @@ class HoldemTable(Env):
     def _calculate_end_of_game_reward(self):
         old_reward = self.total_reward_for_game 
         print(f"(old) reward for game: {old_reward}")
-        scaled_reward = old_reward / self.game_steps
-        new_reward = -old_reward+scaled_reward
-        """
-        if (self.winner_ix == 1 and scaled_reward < 0) or (not(self.winner_ix == 1) and scaled_reward > 0):
-            new_reward *= -1
-        """
+        new_reward = old_reward
+        
+        if (self.game_steps >= 40):
+            invert_sign = (self.winner_ix == 1 and old_reward < 0) or (not(self.winner_ix == 1) and old_reward > 0)
+            _ = old_reward*10
+            scaled_reward = _ if not invert_sign and _ < 1000 and _ > -1000 else old_reward
+            new_reward = scaled_reward
+            _ = old_reward + (new_reward*-2)
+            if invert_sign:
+                new_reward *= -2 if _ < 1000 and _ > -1000 else -1
+
+        # win/loss likely due to chance so episode reward should be 0
+        elif (self.game_steps < 40) and not(int(new_reward + old_reward) == 0):
+            new_reward = -old_reward
+
         # reset vars
         self.game_steps = 0
         self.total_reward_for_game = 0
