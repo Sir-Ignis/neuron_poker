@@ -152,6 +152,7 @@ class HoldemTable(Env):
         self.current_round_pot = 0
         self.player_pots = None  # individual player pots
 
+        self.prev_stack_size = 0 # prev stack size for player at index 1, i.e. keras-rl
         self.total_reward_for_game = 0
         self.hand_ended = False
         self.dqn_won_hand = False
@@ -256,6 +257,7 @@ class HoldemTable(Env):
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
                 action_reward = self._calculate_expected_reward(Action(action))
                 self.total_reward_for_hand += action_reward
+                self.prev_stack_size = self.players[1].stack
                 self._execute_step(Action(action))
                 self.total_reward_for_hand += self._calculate_action_reward(action_reward)
                 self.last_action = Action(action)
@@ -383,6 +385,8 @@ class HoldemTable(Env):
         
         if int(reward) == 0:
             reward = self.amount_won
+            reward -= self.prev_stack_size if self.dqn_won_hand else 0
+
         if (not(self.dqn_won_hand) and reward > 0) \
         or (self.dqn_won_hand and reward < 0):
             reward *= -1
