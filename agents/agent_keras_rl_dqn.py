@@ -276,7 +276,7 @@ class Player:
 class TrumpPolicy(EpsGreedyQPolicy):
     """Adaptive EpsGreedyQPolicy when making decision based on neural network."""
 
-    def __init__(self, eps=0.1):
+    def __init__(self, eps=0.05):
         super(EpsGreedyQPolicy, self).__init__()
         self.eps = eps
         self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploitation
@@ -305,7 +305,7 @@ class CustomProcessor(Processor):
     def __init__(self):
         """initizlie properties"""
         self.legal_moves_limit = None
-        self.eps = 0.1
+        self.eps = 0.05
     
     def process_state_batch(self, batch):
         """Remove second dimension to make it possible to pass it into cnn"""
