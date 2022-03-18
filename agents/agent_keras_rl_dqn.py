@@ -32,7 +32,7 @@ nb_steps_warmup = 500  # before training starts, should be higher than start ste
 nb_steps = 2000000
 memory_limit = nb_steps
 batch_size = 512  # items sampled from memory to train
-enable_double_dqn = False
+enable_double_dqn = True
 
 log = logging.getLogger(__name__)    
 

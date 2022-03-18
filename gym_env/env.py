@@ -223,29 +223,19 @@ class HoldemTable(Env):
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        # we don't calculate the reward for the other agent
+                    # we don't calculate the reward for the other agent
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
-                #using old reward function
-                """
-                self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._old_calculate_reward(action)
-                """
                 # using improved reward function
                 self.player_data.position = self.current_player.seat
                 self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
                 reward = self._calculate_expected_reward(Action(action))
-                self.prev_stack_size = self.players[self.current_player.seat].stack
                 self._execute_step(Action(action))
                 self.last_action = Action(action)
                 self.reward = reward
