@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import TensorBoard, Callback
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.optimizers import Adam
 
-from rl.policy import GreedyQPolicy
+from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.agents import DQNAgent
 from rl.core import Processor
@@ -32,7 +32,7 @@ nb_steps_warmup = 500  # before training starts, should be higher than start ste
 nb_steps = 2000000
 memory_limit = nb_steps
 batch_size = 512  # items sampled from memory to train
-enable_double_dqn = True
+enable_double_dqn = False
 
 log = logging.getLogger(__name__)    
 
@@ -64,13 +64,13 @@ class ModelCheckpoint(ModelIntervalCheckpoint):
         self.model.save_weights(self.filepath,overwrite=True)
 
 
-def plot_metrics(metrics_file_path):
+def plot_loss_and_accuracy(metrics_file_path):
     d = pd.read_json(metrics_file_path)
     l = pd.DataFrame(d['loss'])
     a = pd.DataFrame(d['accuracy'])
     l = l.dropna()
     a = a.dropna()
-    fig, (m1, m2) = plt.subplots(nrows=1, ncols=2)
+    fig, (m1, m2) = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
     m1.set_title('Loss per episode')
     m1.set_xlabel('Episode')
     m1.set_ylabel('Loss')
@@ -79,19 +79,22 @@ def plot_metrics(metrics_file_path):
     m2.set_ylabel('Accuracy')
     m1.plot(l, label='loss')
     m2.plot(a, label='accuracy')
+    fig_path = FILE_PATH+'loss_and_accuracy.svg'
+    plt.savefig(fig_path)
     plt.show()
-    metrics_path = 'accuracy_and_loss.png'
-    fig.savefig(FILE_PATH_2+metrics_path)
 
 def plot_bbg(big_blinds_data):
     plt.xlabel('Episode')
     plt.ylabel('bb/g')
     plt.title('Big Blinds Won Per Game')
     x_pos = [i for i, _ in enumerate(big_blinds_data)]
-    plt.plot(x_pos, big_blinds_data, color='b')
+    plt.plot(x_pos, big_blinds_data, color='b', figsize=(12,6))
+    fig_path = FILE_PATH+'cumulative_bb_won.svg'
+    plt.savefig(fig_path)
     plt.show()
 
 def plot_cumulative_bb(big_blinds_data):
+    plt.figure(figsize=(12,6))
     plt.xlabel('Episode')
     plt.ylabel('Cumulative BB won')
     plt.title('Cumulative Big Blinds Won')
@@ -101,8 +104,8 @@ def plot_cumulative_bb(big_blinds_data):
         y_pos.append(sum(big_blinds_data[:i+1]))
     print("x: %s, y: %s"%(len(x_pos),len(y_pos)))
     plt.plot(x_pos, y_pos, color='b')
-    bb_path = 'cumulative_bb_won.png'
-    plt.savefig(FILE_PATH_2+bb_path)
+    fig_path = FILE_PATH+'cumulative_bb_won.svg'
+    plt.savefig(fig_path)
     plt.show()
 
 
@@ -213,7 +216,7 @@ class Player:
                 # games won and lost by the agent (assumes agent is at index 1)
                 print('Games Won: '+str(league_table[1]))
                 print("Games Lost: "+str(league_table[0]))
-            plot_metrics(log_dir)
+            plot_loss_and_accuracy(log_dir)
             plot_cumulative_bb(bbg)
             wr = win_rate(hands, bbg)
             print('Win rate (bb/h) = %s'%wr)
@@ -258,7 +261,7 @@ class Player:
         if(games == 0):
             print('Error: no games were completed!')
         else:
-            plot_metrics(log_dir)
+            plot_loss_and_accuracy(log_dir)
             plot_cumulative_bb(bbg)
             wr = win_rate(hands, bbg)
             print('Win rate (bb/100) = %s'%wr)
@@ -277,21 +280,29 @@ class Player:
 
 # replaced old policy
 # see https://github.com/dickreuter/neuron_poker/blob/master/agents/agent_keras_rl_dqn.py#L168 for old policy
-class TrumpPolicy(GreedyQPolicy):
-    """Custom policy when making decision based on neural network."""
+class TrumpPolicy(EpsGreedyQPolicy):
+    """Adaptive EpsGreedyQPolicy when making decision based on neural network."""
 
+    def __init__(self, eps=0.05):
+        super(EpsGreedyQPolicy, self).__init__()
+        self.eps = eps
+        self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploitation
     def select_action(self, q_values):
         """Return the selected action
-
         # Arguments
             q_values (np.ndarray): List of the estimations of Q for each action
-
         # Returns
             Selection action
         """
+        global Q_VALUES
+        Q_VALUES = q_values.copy()
         assert q_values.ndim == 1
-        action = np.argmax(q_values)
-        log.info(f"Chosen action by keras-rl {action} - q values: {q_values}")
+        nb_actions = q_values.shape[0]
+        
+        if np.random.uniform() < self.eps or self.agent.step < nb_steps_warmup:
+            action = np.random.randint(0, nb_actions)
+        else:
+            action = np.argmax(q_values)
         return action
 
    

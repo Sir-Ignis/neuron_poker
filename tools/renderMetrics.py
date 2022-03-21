@@ -21,6 +21,29 @@ def plot_loss_and_accuracy(metrics_file_path):
     plt.savefig(fig_path)
     plt.show()
 
+def plot_loss_and_accuracy_n(metrics_file_path, n):
+    """ n is number of rows to select """
+    d = pd.read_json(metrics_file_path)
+    l = pd.DataFrame(d['loss'])
+    a = pd.DataFrame(d['accuracy'])
+    l = l.dropna()
+    a = a.dropna()
+    l = l.head(n)
+    a = a.head(n)
+    fig, (m1, m2) = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
+    m1.set_title('Loss per episode')
+    m1.set_xlabel('Episode')
+    m1.set_ylabel('Loss')
+    m2.set_title('Accuracy per episode')
+    m2.set_xlabel('Episode')
+    m2.set_ylabel('Accuracy')
+    m1.plot(l, label='loss')
+    m2.plot(a, label='accuracy')
+    fig_path = '../../trained/dqn_old_reward_equity_20_30/loss_and_accuracy.svg'
+    plt.savefig(fig_path)
+    plt.show()
+
+
 def plot_reward(metrics_file_path):
     d = pd.read_json(metrics_file_path)
     r = pd.DataFrame(d['episode_reward'])
@@ -33,6 +56,6 @@ def plot_reward(metrics_file_path):
     plt.savefig(fig_path)
     plt.show()
 
-
-plot_loss_and_accuracy(metrics_file_path)
-plot_reward(metrics_file_path)
+plot_loss_and_accuracy_n("../../trained/dqn_old_reward_equity_20_30/metrics_20220318-213910_dqn1", 100000)
+#plot_loss_and_accuracy(metrics_file_path)
+#plot_reward(metrics_file_path)
