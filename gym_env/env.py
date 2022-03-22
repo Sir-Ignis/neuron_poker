@@ -152,6 +152,7 @@ class HoldemTable(Env):
         self.current_round_pot = 0
         self.player_pots = None  # individual player pots
 
+        self.hand_ended = False
         self.league_table = None
         self.games = 0
         self.hands = 0
@@ -237,6 +238,8 @@ class HoldemTable(Env):
                 self.player_data.equity_to_river_alive = self.current_player.equity_alive
                 reward = self._calculate_expected_reward(Action(action))
                 self._execute_step(Action(action))
+                # adjust the reward according to if the hand ended
+                reward = self._calculate_action_reward(reward)
                 self.last_action = Action(action)
                 self.reward = reward
                 
@@ -313,31 +316,13 @@ class HoldemTable(Env):
         if self.render_switch:
             self.render()
 
-    def _calculate_reward(self, action):
-        """Reward function for agent"""
-        reward = 0
-        if not(action == Action.FOLD):
-            # reward = expected value weighted against number of table cards
-            # contribution = amount keras-rl contributed to the pot
-            contribution = self._contribution(action)
-
-            #print("equity = %f"%self.player_data.equity_to_river_alive)
-            total_winnings = sum(np.minimum(self.player_max_win[1], self.player_max_win)) + contribution
-            #print('max win = %s'%total_winnings)
-            win_amount = self.player_data.equity_to_river_alive * total_winnings
-            #print("win %s"%win_amount)
-            loss_amount = (1 - self.player_data.equity_to_river_alive) * (contribution+self.player_pots[self.current_player.seat])
-            #print("loss %s"%loss_amount)
-            expected_value = win_amount - loss_amount 
-            #print("expected value = %s"%(expected_value))
-            reward = expected_value 
-            #print("reward = %s"%reward)
-        elif action == Action.FOLD:
-            reward = -self.player_pots[self.current_player.seat]
-            #print("reward = %s"%reward)
-        else:
-            pass
-        return reward
+    def _calculate_action_reward(self, expected_action_reward):
+        action_reward = expected_action_reward
+        if not(self.hand_ended):
+            action_reward = 0
+        else: # reset variable
+            self.hand_ended = False
+        return action_reward
 
     def _calculate_expected_reward(self, action):
         """returns the expected reward for a given action (expected value)"""
@@ -648,6 +633,7 @@ class HoldemTable(Env):
         self.player_pots = [0] * len(self.players)
 
     def _end_hand(self):
+        self.hand_ended = True
         self._clean_up_pots()
         self.winner_ix = self._get_winner()
         self._award_winner(self.winner_ix)
