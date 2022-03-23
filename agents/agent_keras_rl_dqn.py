@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import TensorBoard, Callback
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.optimizers import Adam
 
-from rl.policy import EpsGreedyQPolicy
+from rl.policy import GreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.agents import DQNAgent
 from rl.core import Processor
@@ -280,13 +280,9 @@ class Player:
 
 # replaced old policy
 # see https://github.com/dickreuter/neuron_poker/blob/master/agents/agent_keras_rl_dqn.py#L168 for old policy
-class TrumpPolicy(EpsGreedyQPolicy):
-    """Adaptive EpsGreedyQPolicy when making decision based on neural network."""
+class TrumpPolicy(GreedyQPolicy):
+    """Custom policy when making decision based on neural network."""
 
-    def __init__(self, eps=0.05):
-        super(EpsGreedyQPolicy, self).__init__()
-        self.eps = eps
-        self.eps_warmup = 1 # 100% random actions in warm up phase to maximize exploitation
     def select_action(self, q_values):
         """Return the selected action
         # Arguments
@@ -294,15 +290,9 @@ class TrumpPolicy(EpsGreedyQPolicy):
         # Returns
             Selection action
         """
-        global Q_VALUES
-        Q_VALUES = q_values.copy()
         assert q_values.ndim == 1
-        nb_actions = q_values.shape[0]
-        
-        if np.random.uniform() < self.eps or self.agent.step < nb_steps_warmup:
-            action = np.random.randint(0, nb_actions)
-        else:
-            action = np.argmax(q_values)
+        action = np.argmax(q_values)
+        log.info(f"Chosen action by keras-rl {action} - q values: {q_values}")
         return action
 
    

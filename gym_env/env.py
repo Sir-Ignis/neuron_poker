@@ -224,24 +224,21 @@ class HoldemTable(Env):
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
-                    # we don't calculate the reward for the other agent
+                    # using old reward function
+                    if self.first_action_for_hand[self.acting_agent] or self.done:
+                        self.first_action_for_hand[self.acting_agent] = False
+                        self._old_calculate_reward(action)
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
-                # using improved reward function
-                self.player_data.position = self.current_player.seat
-                self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
-                                                           sum(self.player_cycle.alive), 1000)
-                self.player_data.equity_to_river_alive = self.current_player.equity_alive
-                reward = self._calculate_expected_reward(Action(action))
+                # using old reward function
                 self._execute_step(Action(action))
-                # adjust the reward according to if the hand ended
-                reward = self._calculate_action_reward(reward)
-                self.last_action = Action(action)
-                self.reward = reward
+                if self.first_action_for_hand[self.acting_agent] or self.done:
+                    self.first_action_for_hand[self.acting_agent] = False
+                    self._old_calculate_reward(action)
                 
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
