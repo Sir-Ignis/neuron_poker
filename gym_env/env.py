@@ -210,15 +210,6 @@ class HoldemTable(Env):
                 log.debug("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
-                if self.render_switch:
-                    data = dict(legal_moves=[move.value for move in self.legal_moves], last_action=self.last_action.value, \
-                               opponent_stack=self.players[1].stack, table_cards=self.table_cards, \
-                               player_stack=self.players[0].stack, player_cards=self.players[0].cards,
-                               pot=sum(self.player_max_win))
-                    
-                    print('GUI INFO: '+str(data))
-                    
-                    #print('GUI INFO: '+str([move.value for move in self.legal_moves]))
                 action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
@@ -234,6 +225,7 @@ class HoldemTable(Env):
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
+                self.last_action = Action(action)
                 # using old reward function
                 self._execute_step(Action(action))
                 if self.first_action_for_hand[self.acting_agent] or self.done:
@@ -311,7 +303,19 @@ class HoldemTable(Env):
         self.observation_space = self.array_everything.shape
 
         if self.render_switch:
-            self.render()
+            #self.render()
+            if self.legal_moves is not None and self.players is not None:
+                _ = -1
+                if self.last_action is not None:
+                    _ = self.last_action.value
+                data = dict(legal_moves=[move.value for move in self.legal_moves], last_action=_, \
+                            opponent_stack=self.players[1].stack, table_cards=self.table_cards, \
+                            player_stack=self.players[0].stack, player_cards=self.players[0].cards,
+                            pot=sum(self.player_max_win))
+                
+                print('GUI INFO: '+str(data))
+                
+                #print('GUI INFO: '+str([move.value for move in self.legal_moves]))
 
     def _calculate_action_reward(self, expected_action_reward):
         action_reward = expected_action_reward

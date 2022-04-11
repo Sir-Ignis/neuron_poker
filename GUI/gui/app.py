@@ -27,8 +27,7 @@ LOG_NEW_HAND_STRING = 'INFO - Starting new hand.'
 os.chdir(PROJECT_PATH)
 
 class Action(Enum):
-    """Allowed actions"""
-
+    NONE = -1
     FOLD = 0
     CHECK = 1
     CALL = 2
@@ -45,12 +44,12 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__()
 
         self.p = None
-
         self.ui = Menu_MainWindow()
         self.ui.setupUi(self)
         self.ui.startButton.clicked.connect(self.start_main)
         self.data = []
         self.raise_btns = []
+        self.log_actions = 0 # when log action string shown this is incremented
 
     def closeEvent(self, event):
         if not(self.p == None):
@@ -76,6 +75,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_main_ui(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.setWindowTitle("NLHUTH Poker Bot")
         self.renderSprites()
         self.toggle_buttons(False)
         self.connect_buttons()
@@ -91,7 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.raisePotButton.clicked.connect(self.raisePotAction)
         self.ui.allinButton.clicked.connect(self.allinAction)
 
-    def toggle_buttons(self, enable=False):
+    def toggle_buttons(self, enable=True):
         self.ui.callButton.setEnabled(enable)
         self.ui.checkButton.setEnabled(enable)
         self.ui.foldButton.setEnabled(enable)
@@ -113,10 +113,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.allinButton.hide()
         self.ui.allinButton.lower()
 
-    def parseData(self, data):
+    def parseData(self, data, action_string_shown):
         info = data
-        idx = data.indexOf(LOG_ACTION_STRING.encode("utf8"))
-        info.truncate(idx)
+
+        if action_string_shown:
+            idx = data.indexOf(LOG_ACTION_STRING.encode("utf8"))
+            info.truncate(idx)
         
         info_str = str(info, "utf8")
         info_str = info_str.replace(LOG_GUI_INFO_STRING,'')
@@ -162,16 +164,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def handle_stdout(self):
         """ updates gui based on info read from process, i.e. info read from the terminal"""
         print('called stdout')
-        self.toggle_buttons(False)
-
         data = self.p.readAllStandardOutput()
         data_ = QByteArray(data)
 
+        log_action_string_shown = False
         if(data.contains(LOG_ACTION_STRING.encode("utf8"))):
             # when first log_action_string is shown is when the ui is fully ready
             self.toggle_buttons(True)
+            log_action_string_shown = True
         if data_.contains(LOG_GUI_INFO_STRING.encode("utf8")):
-            self.parseData(data_)
+            self.parseData(data_,log_action_string_shown)
         if data_.contains(LOG_NEW_HAND_STRING.encode("utf8")):
             self.clear_table()
         if data_.contains(LOG_DEALER_POS_STRING.encode("utf8")):
