@@ -145,7 +145,7 @@ class HoldemTable(Env):
         self.funds_plot = funds_plot
         self.max_round_raising = max_raising_rounds
         self.bbg_data = []
-        self.last_action = None
+        self.last_action = None #last action of opponent (keras-rl)
 
         # pots
         self.community_pot = 0
@@ -215,22 +215,21 @@ class HoldemTable(Env):
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
-                    # using old reward function
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        self._old_calculate_reward(action)
+                    # reward not adjusted for opponent's actions
+                    self.last_action = Action(action)
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
-                self.last_action = Action(action)
-                # using old reward function
+                # using improved reward function
+                self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
+                                                           sum(self.player_cycle.alive), 1000)
+                self.player_data.equity_to_river_alive = self.current_player.equity_alive
+                reward = self._calculate_expected_reward(Action(action))
                 self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._old_calculate_reward(action)
+                self.reward = reward
                 
             log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
@@ -347,7 +346,7 @@ class HoldemTable(Env):
             reward = expected_value 
         # folding forfeits the pot
         else:
-            reward = -pot
+            reward = -self.initial_stacks*2 #heavily penalise folding to discourage this behaviour as nn has tendancy to fold during warm up
         return reward
 
 

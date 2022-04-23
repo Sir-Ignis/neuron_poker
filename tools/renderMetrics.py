@@ -84,8 +84,8 @@ def combined_loss_plot(metrics_file_path, metrics_file_path2):
     
     fig=plt.figure(figsize=(6,3))
     plt.rc('font', size=11)
-    ax=fig.add_subplot(111, label="1")
-    ax2=fig.add_subplot(111, label="2", frame_on=False)
+    ax2=fig.add_subplot(111, label="1")
+    ax=fig.add_subplot(111, label="2", frame_on=False)
 
     ax.plot(l, color="C0")
     ax.set_xlabel("episode")
@@ -93,12 +93,14 @@ def combined_loss_plot(metrics_file_path, metrics_file_path2):
     ax.tick_params(axis='y', colors="C0")
     ax.set_ylabel("loss", color="C0")
 
+    """
     ymin, ymax = ax.get_ylim()
     # shift the graph up adjust the y_tick labels
     ax.set_ylim(-ymax,ymax)
     step_size = 10e3
     ax.set_yticks(np.arange(0, ymax, step_size))
     ax.ticklabel_format(style='sci', axis='y', scilimits=(-3,3), useMathText=True)
+    """
 
     ax2.plot(l2, color="C1")
     ax2.xaxis.tick_top()
@@ -109,12 +111,13 @@ def combined_loss_plot(metrics_file_path, metrics_file_path2):
     ax2.tick_params(axis='x', colors="C1")
     ax2.tick_params(axis='y', colors="C1")
 
+    """
     # adjust the y_tick labels
     ymin, ymax = ax2.get_ylim()
     step_size = 1000
     ax2.set_yticks(np.arange(0, ymax, step_size))
     ax2.ticklabel_format(style='sci', axis='y', scilimits=(-3,3), useMathText=True)
-
+    """
     #move scaling labeling to y-axis
     formatter = mticker.ScalarFormatter(useMathText=True)
     formatter.set_powerlimits((-3,3))
@@ -227,7 +230,7 @@ def plot_reward(metrics_file_path):
     d = pd.read_json(metrics_file_path)
     r = pd.DataFrame(d['episode_reward'])
     fig, rplt = plt.subplots(figsize=(12,6))
-    rplt.set_title('Reward per episode');
+    rplt.set_title('Reward per episode')
     rplt.set_xlabel('Episode')
     rplt.set_ylabel('Reward')
     rplt.plot(r, label="reward")
@@ -235,11 +238,8 @@ def plot_reward(metrics_file_path):
     plt.savefig(fig_path)
     plt.show()
 
-#plot_loss_and_accuracy_n("../../trained/dqn_old_reward_equity_20_30/metrics_20220318-213910_dqn1", 100000)
-metrics_file_path  = "/home/daniel/Project/trained/DQN_old_reward/metrics_20220323-113330_dqn1"
-metrics_file_path2 = "/home/daniel/Project/trained/DQNWE_256_600000/metrics_20220214-101316_dqn1"
+metrics_file_path  = "/home/daniel/Project/trained/DDQN_20_30_equity/metrics_20220318-094714_dqn1"
+metrics_file_path2 = "/home/daniel/Project/trained/DDQN_20_30_equity_old_reward/metrics_20220319-155040_dqn1"
 
+#combined_loss_plot(metrics_file_path, metrics_file_path2)
 combined_accuracy_plot(metrics_file_path, metrics_file_path2)
-#multi_plot_loss_and_accuracy(metrics_file_path, metrics_file_path2)
-#la_multi_plot(metrics_file_path, metrics_file_path2)
-#plot_loss_and_accuracy(metrics_file_path2)

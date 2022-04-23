@@ -32,7 +32,7 @@ nb_steps_warmup = 500  # before training starts, should be higher than start ste
 nb_steps = 2000000
 memory_limit = nb_steps
 batch_size = 512  # items sampled from memory to train
-enable_double_dqn = False
+enable_double_dqn = True
 
 log = logging.getLogger(__name__)    
 
@@ -216,6 +216,12 @@ class Player:
                 # games won and lost by the agent (assumes agent is at index 1)
                 print('Games Won: '+str(league_table[1]))
                 print("Games Lost: "+str(league_table[0]))
+            elif (league_table is not None) and (league_table.size == 1):
+                # keras didn't win any games!
+                print('Games Won: 0')
+                print("Games Lost: "+str(league_table[0]))
+            else:
+                print("Error: league_table is None!")
             plot_loss_and_accuracy(log_dir)
             plot_cumulative_bb(bbg)
             wr = win_rate(hands, bbg)
