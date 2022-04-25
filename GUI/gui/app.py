@@ -205,12 +205,12 @@ class MainWindow(QtWidgets.QMainWindow):
         dealer_str = dealer_str.split('\n')[0][-1]
         dealer_pos = int(dealer_str)
 
-        player_btn_label_coords = (530, 720)
-        player_btn_coords = (522, 700)
+        player_btn_label_coords = (910, 670)
+        player_btn_coords = (918, 690)
         p = (player_btn_label_coords, player_btn_coords)
 
-        agent_btn_label_coords = (608, 70)
-        agent_btn_coords = (600, 50)
+        agent_btn_label_coords = (608, 30)
+        agent_btn_coords = (600, 10)
         a = (agent_btn_label_coords, agent_btn_coords)
 
         # player is dealer
