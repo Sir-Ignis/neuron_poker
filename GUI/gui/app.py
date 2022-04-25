@@ -8,8 +8,10 @@ from enum import Enum
 from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtCore import QProcess, QByteArray, pyqtSlot
 
-from menu import Menu_MainWindow
-from HUTHP import Ui_MainWindow
+from main_menu import Menu_MainWindow # menu UI
+from help_menu import Help_MainWindow 
+from options_menu import Options_MainWindow 
+from HUTHP import Ui_MainWindow # main UI for game
 
 
 PROJECT_PATH = '/home/daniel/Project/neuron_poker/' # replace with where your neuron_poker git is stored
@@ -18,11 +20,17 @@ SPRITES_PATH = RESOURCES_PATH+'sprites/'
 CARD_SPRITES_PATH = SPRITES_PATH+'cards/'
 CHIP_SPRITES_PATH = SPRITES_PATH+'chips/'
 TABLE_SPRITES_PATH = SPRITES_PATH+'table/'
+ICONS_PATH = SPRITES_PATH+'icons/'
 
 LOG_ACTION_STRING = 'Choose action with number: '
 LOG_DEALER_POS_STRING = 'Dealer is at position'
 LOG_GUI_INFO_STRING = 'GUI INFO: '
 LOG_NEW_HAND_STRING = 'INFO - Starting new hand.'
+
+PLAY_STEP_LENGTH = 1000 # used in process start command to determine selfplay step length
+MODEL_TYPE_EQUITY = "EQUITY" # equity uses the model when the agent was trained agains the equity agent
+MODEL_TYPE_RANDOM = "RANDOM" # random uses the model when the agent was trained against a random agent
+MODEL_TYPE = MODEL_TYPE_EQUITY # used in process command to determine the selfplay model used
 
 os.chdir(PROJECT_PATH)
 
@@ -42,14 +50,8 @@ class Action(Enum):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-
-        self.p = None
-        self.ui = Menu_MainWindow()
-        self.ui.setupUi(self)
-        self.ui.startButton.clicked.connect(self.start_main)
-        self.data = []
-        self.raise_btns = []
-        self.log_actions = 0 # when log action string shown this is incremented
+        # setup main_menu ui
+        self.home()
 
     def closeEvent(self, event):
         if not(self.p == None):
@@ -70,7 +72,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.p.readyReadStandardOutput.connect(self.handle_stdout)
             self.p.readyReadStandardError.connect(self.handle_stderr)
             self.p.finished.connect(self.process_finished)  # Clean up once
-            self.p.start("python", ['-u','main.py','selfplay','dqn_play_human','-c','--steps=1000','--render'])
+            steps = f"--steps={PLAY_STEP_LENGTH}"
+            self.p.start("python", ['-u','main.py','selfplay','dqn_play_human','-c',steps,'--render'])
 
     def setup_main_ui(self):
         self.ui = Ui_MainWindow()
@@ -79,6 +82,57 @@ class MainWindow(QtWidgets.QMainWindow):
         self.renderSprites()
         self.toggle_buttons(False)
         self.connect_buttons()
+
+    def setup_help(self):
+        self.ui = Help_MainWindow()
+        self.ui.setupUi(self)
+        self.ui.backButton.clicked.connect(self.home)
+
+    def setup_options(self):
+        self.ui = Options_MainWindow()
+        self.ui.setupUi(self)
+        self.ui.infoIcon.setPixmap(QtGui.QPixmap(ICONS_PATH+'ic_info.png'))
+        self.ui.backButton.clicked.connect(self.home)
+        self.ui.randomRBtn.toggled.connect(lambda:self.change_model_type(self.ui.randomRBtn))
+        self.ui.equityRBtn.toggled.connect(lambda:self.change_model_type(self.ui.equityRBtn))
+        self.ui.shortRBtn.toggled.connect(lambda:self.change_num_runs(self.ui.shortRBtn))
+        self.ui.longRBtn.toggled.connect(lambda:self.change_num_runs(self.ui.longRBtn))
+
+    def home(self):
+        self.p = None
+        self.ui = Menu_MainWindow()
+        self.ui.setupUi(self)
+        self.ui.startButton.clicked.connect(self.start_main) # start poker bot
+        self.ui.helpButton.clicked.connect(self.setup_help)
+        self.ui.optionsButton.clicked.connect(self.setup_options)
+        self.data = []
+        self.raise_btns = []
+        self.log_actions = 0 # when log action string shown this is incremented
+
+
+    """ changes the number of runs that the poker bot is started with depending on
+        which radio button was selected in the options menu, default is short - 1000 step run - 
+        and long being 10000 steps """
+    def change_num_runs(self,b):
+        global PLAY_STEP_LENGTH
+        if b.isChecked():
+            if b.text() == "Short":
+                PLAY_STEP_LENGTH = 1000
+            elif b.text() == "Long":
+                PLAY_STEP_LENGTH = 10000
+            print(f"Changed episode length to {PLAY_STEP_LENGTH}")
+
+
+    """ changes the model type depending on the selected radio button
+        see load function in keras agent to see how loading is done """
+    def change_model_type(self,b):
+        global MODEL_TYPE
+        if b.isChecked():
+            if b.text() == "Random" and b.isChecked():
+                MODEL_TYPE = MODEL_TYPE_RANDOM
+            elif b.text() == "Equity" and b.isChecked():
+                MODEL_TYPE = MODEL_TYPE_EQUITY
+            print(f"Changed model type to {MODEL_TYPE}")
 
     def connect_buttons(self):
         self.ui.callButton.clicked.connect(self.callAction)
