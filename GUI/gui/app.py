@@ -205,12 +205,12 @@ class MainWindow(QtWidgets.QMainWindow):
         dealer_str = dealer_str.split('\n')[0][-1]
         dealer_pos = int(dealer_str)
 
-        player_btn_label_coords = (310, 550)
-        player_btn_coords = (305, 580)
+        player_btn_label_coords = (530, 720)
+        player_btn_coords = (522, 700)
         p = (player_btn_label_coords, player_btn_coords)
 
-        agent_btn_label_coords = (332, 20)
-        agent_btn_coords = (330, 40)
+        agent_btn_label_coords = (608, 70)
+        agent_btn_coords = (600, 50)
         a = (agent_btn_label_coords, agent_btn_coords)
 
         # player is dealer
@@ -356,7 +356,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.allinButton.hide()
         
     def renderSprites(self):
-        table_top_path = TABLE_SPRITES_PATH+"table_top_empty.png"
+        table_top_path = TABLE_SPRITES_PATH+"poker_table_top.png"
         dealer_btn_path = CHIP_SPRITES_PATH+"Dealer_Chip.png"
         self.ui.tableSprite.setPixmap(QtGui.QPixmap(table_top_path))
         self.ui.dealerButton.setPixmap(QtGui.QPixmap(dealer_btn_path))
