@@ -73,7 +73,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.p.readyReadStandardError.connect(self.handle_stderr)
             self.p.finished.connect(self.process_finished)  # Clean up once
             steps = f"--steps={PLAY_STEP_LENGTH}"
-            self.p.start("python", ['-u','main.py','selfplay','dqn_play_human','-c',steps,'--render'])
+            model = MODEL_TYPE.lower()
+            if (not(MODEL_TYPE == MODEL_TYPE_RANDOM)): 
+                model = "--name=dqn1"
+            else:
+                model = f"--name={model}"
+            print(model)
+            self.p.start("python", ['-u','main.py','selfplay','dqn_play_human',model,'-c',steps,'--render'])
 
     def setup_main_ui(self):
         self.ui = Ui_MainWindow()
