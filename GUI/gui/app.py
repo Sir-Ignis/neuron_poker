@@ -91,7 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_options(self):
         self.ui = Options_MainWindow()
         self.ui.setupUi(self)
-        self.ui.infoIcon.setPixmap(QtGui.QPixmap(ICONS_PATH+'ic_info.png'))
+        self.ui.infoIcon.setPixmap(QtGui.QPixmap(ICONS_PATH+'ic_info_orange.png'))
         self.ui.backButton.clicked.connect(self.home)
         self.ui.randomRBtn.toggled.connect(lambda:self.change_model_type(self.ui.randomRBtn))
         self.ui.equityRBtn.toggled.connect(lambda:self.change_model_type(self.ui.equityRBtn))
