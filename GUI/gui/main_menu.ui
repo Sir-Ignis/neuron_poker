@@ -6,22 +6,32 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
-    <height>661</height>
+    <width>1440</width>
+    <height>762</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>NLHUTH Poker Bot</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="styleSheet">
+    <string notr="true">background-color: rgb(0, 140, 0)</string>
+   </property>
    <widget class="QPushButton" name="startButton">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>280</y>
+      <x>650</x>
+      <y>380</y>
       <width>131</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: white;
+color: black;</string>
     </property>
     <property name="text">
      <string>START</string>
@@ -30,11 +40,15 @@
    <widget class="QPushButton" name="optionsButton">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>340</y>
+      <x>650</x>
+      <y>440</y>
       <width>131</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: white;
+color: black;</string>
     </property>
     <property name="text">
      <string>OPTIONS</string>
@@ -43,14 +57,34 @@
    <widget class="QPushButton" name="helpButton">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>400</y>
+      <x>650</x>
+      <y>500</y>
       <width>131</width>
       <height>41</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: white;
+color: black;</string>
+    </property>
     <property name="text">
      <string>HELP</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pokerMenuSprite">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>140</y>
+      <width>511</width>
+      <height>221</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../res/sprites/icons/poker-aces-clipart-md.png</pixmap>
     </property>
    </widget>
   </widget>
@@ -59,8 +93,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>950</width>
-     <height>19</height>
+     <width>1440</width>
+     <height>24</height>
     </rect>
    </property>
   </widget>

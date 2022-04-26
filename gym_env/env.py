@@ -590,7 +590,8 @@ class HoldemTable(Env):
 
         elif self.stage == Stage.SHOWDOWN:
             log.info("Showdown")
-
+            # added to pass opponent cards to GUI
+            log.info("Opponent cards: "+str(self.players[0].cards))
         else:
             raise RuntimeError()
 

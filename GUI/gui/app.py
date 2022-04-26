@@ -6,7 +6,7 @@ import ast
 from enum import Enum
 
 from PyQt6 import QtWidgets, QtGui
-from PyQt6.QtCore import QProcess, QByteArray, pyqtSlot
+from PyQt6.QtCore import QProcess, QByteArray, pyqtSlot, QEventLoop, QTimer
 
 from main_menu import Menu_MainWindow # menu UI
 from help_menu import Help_MainWindow 
@@ -14,7 +14,8 @@ from options_menu import Options_MainWindow
 from HUTHP import Ui_MainWindow # main UI for game
 
 
-PROJECT_PATH = '/home/daniel/Project/neuron_poker/' # replace with where your neuron_poker git is stored
+PROJECT_PATH = '/Users/daniel/Documents/Poker Project/neuron_poker/neuron_poker' 
+# replace with where your neuron_poker git is stored
 RESOURCES_PATH = PROJECT_PATH+'/GUI/res/'
 SPRITES_PATH = RESOURCES_PATH+'sprites/'
 CARD_SPRITES_PATH = SPRITES_PATH+'cards/'
@@ -26,11 +27,14 @@ LOG_ACTION_STRING = 'Choose action with number: '
 LOG_DEALER_POS_STRING = 'Dealer is at position'
 LOG_GUI_INFO_STRING = 'GUI INFO: '
 LOG_NEW_HAND_STRING = 'INFO - Starting new hand.'
+LOG_OPP_CARDS_STRING = 'INFO - Opponent cards: '
 
 PLAY_STEP_LENGTH = 1000 # used in process start command to determine selfplay step length
 MODEL_TYPE_EQUITY = "EQUITY" # equity uses the model when the agent was trained agains the equity agent
 MODEL_TYPE_RANDOM = "RANDOM" # random uses the model when the agent was trained against a random agent
 MODEL_TYPE = MODEL_TYPE_EQUITY # used in process command to determine the selfplay model used
+
+AGENT_CARDS_SHOWN = False #true when keras-rl's cards are shown on the table
 
 os.chdir(PROJECT_PATH)
 
@@ -52,6 +56,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__()
         # setup main_menu ui
         self.home()
+        self.showMaximized()
 
     def closeEvent(self, event):
         if not(self.p == None):
@@ -82,6 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.p.start("python", ['-u','main.py','selfplay','dqn_play_human',model,'-c',steps,'--render'])
 
     def setup_main_ui(self):
+        self.showFullScreen()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setWindowTitle("NLHUTH Poker Bot")
@@ -92,11 +98,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_help(self):
         self.ui = Help_MainWindow()
         self.ui.setupUi(self)
+        self.showMaximized()
         self.ui.backButton.clicked.connect(self.home)
 
     def setup_options(self):
         self.ui = Options_MainWindow()
         self.ui.setupUi(self)
+        self.showMaximized()
         self.ui.infoIcon.setPixmap(QtGui.QPixmap(ICONS_PATH+'ic_info_orange.png'))
         self.ui.backButton.clicked.connect(self.home)
         self.ui.randomRBtn.toggled.connect(lambda:self.change_model_type(self.ui.randomRBtn))
@@ -111,6 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.startButton.clicked.connect(self.start_main) # start poker bot
         self.ui.helpButton.clicked.connect(self.setup_help)
         self.ui.optionsButton.clicked.connect(self.setup_options)
+        self.ui.pokerMenuSprite.setPixmap(QtGui.QPixmap(ICONS_PATH+'title_screen_poker_art.png'))
         self.data = []
         self.raise_btns = []
         self.log_actions = 0 # when log action string shown this is incremented
@@ -205,11 +214,11 @@ class MainWindow(QtWidgets.QMainWindow):
         dealer_str = dealer_str.split('\n')[0][-1]
         dealer_pos = int(dealer_str)
 
-        player_btn_label_coords = (928, 660)
-        player_btn_coords = (920, 640)
+        player_btn_label_coords = (912, 640)
+        player_btn_coords = (900, 620)
         p = (player_btn_label_coords, player_btn_coords)
 
-        agent_btn_label_coords = (637, 25)
+        agent_btn_label_coords = (642, 25)
         agent_btn_coords = (630, 5)
         a = (agent_btn_label_coords, agent_btn_coords)
 
@@ -234,6 +243,8 @@ class MainWindow(QtWidgets.QMainWindow):
             log_action_string_shown = True
         if data_.contains(LOG_GUI_INFO_STRING.encode("utf8")):
             self.parseData(data_,log_action_string_shown)
+        if data_.contains(LOG_OPP_CARDS_STRING.encode("utf8")):
+            self.show_agent_cards(data_)
         if data_.contains(LOG_NEW_HAND_STRING.encode("utf8")):
             self.clear_table()
         if data_.contains(LOG_DEALER_POS_STRING.encode("utf8")):
@@ -399,6 +410,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.playerCard1.setPixmap(QtGui.QPixmap())
         self.ui.playerCard2.setPixmap(QtGui.QPixmap())
 
+    """ shows keras-rl's hand (2 cards) """
+    def show_agent_cards(self, info):
+        info_str = str(info, "utf8")
+        info_str = info_str.replace(LOG_OPP_CARDS_STRING,'')
+        hand = []
+        try:
+            hand = ast.literal_eval(info_str)
+        except Exception as e:
+            print(e)
+        else:
+            print("hand: "+str(hand))
+            card1 = QtGui.QPixmap(CARD_SPRITES_PATH+hand[0]+'.png')
+            card2 = QtGui.QPixmap(CARD_SPRITES_PATH+hand[1]+'.png')
+            self.ui.oppHandCard1.setPixmap(card1)
+            self.ui.oppHandCard2.setPixmap(card2)
+            if not card1.isNull() and not(card2.isNull()):
+                QTimer.singleShot(2000, self.clear_agent_cards)
+        
+    def clear_agent_cards(self):
+        self.ui.oppHandCard1.setPixmap(QtGui.QPixmap())
+        self.ui.oppHandCard2.setPixmap(QtGui.QPixmap())
+        
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = MainWindow()
