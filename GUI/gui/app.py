@@ -23,6 +23,9 @@ CHIP_SPRITES_PATH = SPRITES_PATH+'chips/'
 TABLE_SPRITES_PATH = SPRITES_PATH+'table/'
 ICONS_PATH = SPRITES_PATH+'icons/'
 
+#these strings are used to parse log data from the process
+#better method would use threads instead of processes see dissertation for reason
+#why a process was chosen instead of running it as multiple processes
 LOG_ACTION_STRING = 'Choose action with number: '
 LOG_DEALER_POS_STRING = 'Dealer is at position'
 LOG_GUI_INFO_STRING = 'GUI INFO: '
@@ -191,6 +194,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.allinButton.lower()
 
     def parseData(self, data, action_string_shown):
+        """ likely cause of crashing in this function, perhaps using threads
+            instead of running the main program as a process would prevent random
+            crashes? """ 
         info = data
 
         if action_string_shown:
@@ -221,6 +227,12 @@ class MainWindow(QtWidgets.QMainWindow):
         dealer_str = str(info, "utf8")
         dealer_str = dealer_str.split('\n')[0][-1]
         dealer_pos = int(dealer_str)
+
+        """
+        TODO: 
+        should modify this to make it so its not using coordinates
+        probable solution: change layout to include multiple containers
+        """
 
         player_btn_label_coords = (912, 640)
         player_btn_coords = (900, 620)
@@ -321,6 +333,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hide_raise_buttons()
 
     def renderActionButtons(self, legal_action_values):
+        """ renders the appropriate action buttons depending on the actions in
+        legal_Action_values """
         raise_3bb = False
         raise_pot = False
         raise_2pot = False
@@ -455,6 +469,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def idle_period(self):
         #disable the buttons until win message is cleared
+        #prevents someone from spamming the buttons before concluding who run the round
         global IDLE_PERIOD
         IDLE_PERIOD = True
         self.toggle_buttons(False)
